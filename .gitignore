@@ -1,0 +1,14 @@
+# Build trees (one per CMake preset)
+build/
+
+# Market data: multi-GB, downloaded by scripts/fetch_itch_sample.sh
+data/
+
+# Editor / tooling
+.cache/
+compile_commands.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
