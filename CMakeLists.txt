@@ -41,6 +41,9 @@ include(CompilerWarnings)
 include(Dependencies)
 
 # ---- Targets -----------------------------------------------------------------
+add_subdirectory(src)
+add_subdirectory(apps)
+
 if(HFT_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)

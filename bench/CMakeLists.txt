@@ -9,3 +9,4 @@ function(hft_add_benchmark name)
 endfunction()
 
 hft_add_benchmark(clock_bench SOURCES clock_bench.cpp)
+hft_add_benchmark(itch_bench  SOURCES itch_bench.cpp  LIBS hft::core hft::testsupport)
