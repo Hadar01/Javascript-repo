@@ -1,0 +1,29 @@
+{
+  "_note": "Seed list of companies known to pay 15-40+ LPA for SDE-1/ML roles in India or hire remote from India. Slugs are the public job-board IDs; if one 404s, the scan logs it and continues — fix the slug from the company's careers URL (boards.greenhouse.io/<slug>, jobs.lever.co/<slug>, jobs.ashbyhq.com/<slug>).",
+  "greenhouse": [
+    "stripe", "databricks", "cloudflare", "gitlab", "mongodb", "coinbase",
+    "rubrik", "datadog", "elastic", "okta", "dropbox", "airbnb", "samsara",
+    "postman", "phonepe", "groww", "druva", "sprinklr"
+  ],
+  "lever": [
+    "meesho", "cred", "palantir", "spotify", "zeta", "upstox", "plivo"
+  ],
+  "ashby": [
+    "openai", "notion", "ramp", "sarvam", "deel", "linear"
+  ],
+  "directApply": [
+    { "name": "Google", "url": "https://www.google.com/about/careers/applications/jobs/results/?location=India", "why": "SDE/ML, 25-45 LPA for L3" },
+    { "name": "Microsoft", "url": "https://jobs.careers.microsoft.com/global/en/search?lc=India", "why": "SWE 1/2, C++ heavy teams (Azure, Windows), 20-40 LPA" },
+    { "name": "Amazon / AWS", "url": "https://www.amazon.jobs/en/locations/india", "why": "SDE-1, your AWS prep is directly relevant, 18-35 LPA" },
+    { "name": "Atlassian", "url": "https://www.atlassian.com/company/careers/all-jobs?location=India", "why": "Remote-friendly, 25-45 LPA" },
+    { "name": "Uber", "url": "https://www.uber.com/us/en/careers/list/?location=IND", "why": "SDE-1 25-40 LPA" },
+    { "name": "Flipkart", "url": "https://www.flipkartcareers.com/", "why": "SDE-1 18-32 LPA" },
+    { "name": "Adobe", "url": "https://careers.adobe.com/us/en/search-results?keywords=India", "why": "C++ product teams in Noida, 18-30 LPA" },
+    { "name": "Qualcomm", "url": "https://careers.qualcomm.com/careers?location=India", "why": "C++/systems/ML on-device, 15-28 LPA" },
+    { "name": "NVIDIA", "url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite?locations=India", "why": "C++/CUDA/AI systems, 25-45 LPA" },
+    { "name": "Samsung R&D (SRI-Noida/Bangalore)", "url": "https://research.samsung.com/sri-n", "why": "C++ + ML, Noida is close to Delhi, 15-25 LPA" },
+    { "name": "Arcesium / D. E. Shaw", "url": "https://www.arcesium.com/careers/", "why": "Strong DSA bar, 20-35 LPA" },
+    { "name": "Tower Research / Graviton / Quadeye (quant dev)", "url": "https://www.tower-research.com/open-positions", "why": "C++ low-latency, 30-80+ LPA; Gurgaon-based, needs top DSA" },
+    { "name": "IBM Research India", "url": "https://www.ibm.com/careers/search?field_keyword_05[0]=India", "why": "Quantum/Qiskit background is a real edge here" }
+  ]
+}

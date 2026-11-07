@@ -1,0 +1,26 @@
+{
+  "name": "Aarush Pandey",
+  "email": "aarushpandeybtechcse22-26@liet.in",
+  "headline": "GRF @ IIT Delhi | C++ + DSA | ML/GenAI (RAG, LangGraph, LoRA) | AWS",
+  "experienceYears": 1,
+  "targetCtcLpa": 15,
+  "stretchCtcLpa": 20,
+  "locations": {
+    "remote": true,
+    "preferred": ["Remote", "Delhi", "New Delhi", "Gurugram", "Gurgaon", "Noida"],
+    "acceptable": ["Bengaluru", "Bangalore", "Hyderabad", "Pune", "Mumbai", "Chennai", "India"]
+  },
+  "roleKeywords": [
+    "software engineer", "software development engineer", "sde", "backend",
+    "machine learning", "ml engineer", "ai engineer", "applied scientist",
+    "genai", "llm", "c++", "systems", "cloud", "platform", "research engineer", "quant"
+  ],
+  "skills": {
+    "core": ["c++", "python", "data structures", "algorithms", "sql", "aws", "docker"],
+    "strong": ["pytorch", "tensorflow", "rag", "langgraph", "llm", "fastapi", "redis", "huggingface", "lora", "computer vision", "opencv"],
+    "bonus": ["gcp", "linux", "multithreading", "distributed systems", "kubernetes", "quantum", "qiskit", "agentic"]
+  },
+  "excludeKeywords": ["intern", "internship", "principal", "staff", "director", "manager", "head of", "vp", "architect", "sales", "recruiter"],
+  "maxYearsRequired": 3,
+  "pitch": "I'm a Graduate Research Fellow at IIT Delhi working on applied ML/quantum security, with hands-on GenAI work (RAG pipelines, LangGraph agents, QLoRA/DPO fine-tuning of Mistral-7B) and strong C++/DSA fundamentals. I'm also building on AWS."
+}
