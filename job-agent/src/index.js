@@ -9,6 +9,7 @@ import { scoreJob } from './score.js';
 import { Tracker, STATUSES } from './tracker.js';
 import { renderDraft } from './draft.js';
 import { renderReport } from './report.js';
+import { fetchKaggle, selectOpportunities, renderOpportunities } from './opportunities.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = path.join(ROOT, 'data');
@@ -89,7 +90,40 @@ function add(args, profile, tracker) {
   console.log(`Added ${job.id} (score ${r.rejected ? `0 — ${r.rejected}` : r.score})`);
 }
 
-const HELP = `job-agent — find, rank and track 15+ LPA jobs
+async function opps(args, rest) {
+  const statusFile = path.join(DATA, 'opps-status.json');
+  const statuses = fs.existsSync(statusFile) ? JSON.parse(fs.readFileSync(statusFile, 'utf8')) : {};
+  const catalog = readJson('opportunities.json').items;
+
+  if (rest[0] === 'mark') {
+    const [, q, status] = rest;
+    const hits = catalog.filter((o) => o.id.includes(q || '\u0000'));
+    if (hits.length !== 1 && !statuses[q]) throw new Error(`"${q}" matches ${hits.length} opportunities`);
+    const id = hits[0]?.id || q;
+    statuses[id] = status || 'done';
+    fs.writeFileSync(statusFile, JSON.stringify(statuses, null, 2));
+    return console.log(`${id}: ${statuses[id]}`);
+  }
+
+  let live = [];
+  if (!args.offline) {
+    try { live = await fetchKaggle(); process.stderr.write(`✓ kaggle: ${live.length} competitions\n`); }
+    catch (e) { process.stderr.write(`✗ kaggle: ${e.message} (using curated list only)\n`); }
+  }
+  const list = selectOpportunities([...catalog, ...live], {
+    horizonDays: Number(args.days ?? 180), category: args.category, minFit: Number(args['min-fit'] ?? 50),
+  }).filter((o) => args.all || !['done', 'skipped', 'rejected'].includes(statuses[o.id]));
+  const md = renderOpportunities(list, statuses);
+  fs.writeFileSync(path.join(DATA, 'opportunities.md'), md);
+  console.log(md.split('\n## ').slice(0, 2).join('\n## '));
+  console.log(`Full list: ${path.join(DATA, 'opportunities.md')}`);
+}
+
+const HELP = `job-agent — find, rank and track 15+ LPA jobs AND growth opportunities
+
+  opps [--days 180] [--category freelance|competition|phd|fellowship|open-source|certification] [--offline]
+                                   Freelance, Kaggle (live), PhD, fellowships, OSS — ranked by deadline × fit
+  opps mark <id> <status>          e.g. opps mark mercor applied   (statuses: todo, applied, in-progress, done, skipped)
 
   scan [--min-score 45]            Pull jobs from companies.json, score them, write data/report.md
   list [--status new] [--limit 25] Show tracked jobs, best first
@@ -111,6 +145,7 @@ async function main() {
   switch (cmd) {
     case 'scan': return scan(args, profile, companies, tracker);
     case 'list': return list(args, tracker);
+    case 'opps': return opps(args, rest);
     case 'add': return add(args, profile, tracker);
     case 'draft': {
       const job = tracker.find(rest[0] || '');

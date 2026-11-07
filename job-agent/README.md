@@ -1,4 +1,6 @@
-# Job Hunt Agent: 15+ LPA, remote or Delhi NCR first
+# Job Hunt Agent: 15+ LPA, remote or Delhi NCR first, plus every other growth lane
+
+**Not just jobs:** `node src/index.js opps` ranks freelancing (Mercor, Upwork…), live Kaggle competitions, funded PhDs, research fellowships, open source and certifications by deadline and fit. See `GROWTH-PLAN.md`.
 
 A small Node.js agent (no dependencies, Node 18+) that:
 
@@ -20,8 +22,13 @@ node src/index.js mark <id|company> applied --note "referral from X"
 node src/index.js add --title "SDE 1" --company Flipkart --url https://... --location Bengaluru \
      --description "paste JD here" --salary "20-30 LPA"   # jobs from LinkedIn/Naukri/Wellfound/Instahyre
 node src/index.js report
+node src/index.js opps                  # all growth opportunities → data/opportunities.md
+node src/index.js opps --category phd   # or freelance | competition | fellowship | open-source | certification
+node src/index.js opps mark mercor applied
 npm test
 ```
+
+**Kaggle live data** needs your API token: put `kaggle.json` in `~/.kaggle/`, or set `KAGGLE_API_TOKEN`. Without a token, `opps` uses only the curated list. If you're behind a corporate proxy, run with `NODE_USE_ENV_PROXY=1`.
 
 **Run it daily.** For example, add this with `crontab -e`:
 `0 9 * * * cd ~/Javascript-repo/job-agent && node src/index.js scan`. New postings are marked 🆕 in the report.
