@@ -489,3 +489,219 @@ How to read it:
 3. Why is a sorted `std::vector` with the best price at the back faster than `std::map` for price levels? Describe a market where it would be slower.
 4. How do we know the hot path never allocates? Describe both ways the first version of that test was wrong, and what each mistake would have hidden.
 5. With the feed in cache, parsing costs about 3 ns per message when message types arrive in a predictable order and about 11–12 ns when they're random. Explain the difference, and why just following the length prefixes has a floor of about 2.6 ns.
+
+#### Model answers (stage 1)
+
+**1. Reading a price with `reinterpret_cast`.**
+- It is undefined behaviour twice over:
+  - The address may be misaligned: the field sits at offset 32 of a message that can start anywhere.
+  - It reads `std::byte` objects through a `uint32_t` lvalue, which breaks strict aliasing.
+- Write `std::memcpy(&v, p, 4)` followed by `__builtin_bswap32(v)` (`std::byteswap` in C++23).
+- That compiles to `mov eax, [rdi+32]; bswap eax`, or a single `movbe` with `-march=haswell`.
+
+**2. Tombstones, load factor, top bits.**
+- **Tombstones:** every delete leaves a marker that lookups have to probe past. Over ~100M deletes a day they pile up, probe sequences get longer and longer, and fixing it means a rehash, which is a pause.
+- **Half full:** the expected probes for a miss in linear probing grow like `1/(1-α)²`. That's about 2.5 probes at α = 0.5 and about 50 at α = 0.9.
+- **Top bits:** a product's low bits depend only on the key's low bits, while its top bits mix every key bit. So the top bits spread consecutive order references evenly over the table.
+
+**3. Sorted vector vs `std::map`.**
+- Updates near the top of the book touch the end of the vector: a short, predictable linear scan, a few 16-byte elements shifted, contiguous memory, and no allocation.
+- `std::map` allocates a node per new level and chases pointers on every lookup, and each pointer load can miss the cache.
+- The vector would be slower in a book where activity is spread across hundreds of levels, such as an illiquid stock with a deep, active book: every scan and every shift becomes O(depth).
+
+**4. Proving the hot path doesn't allocate.**
+- Preallocate at setup, refuse instead of growing (`table_full`), and count any growth (`level_growth_events`).
+- Then a test replaces global `operator new` and requires zero allocations during trading. It also checks the checker (a known allocation must be counted).
+- The two mistakes:
+  - **It counted setup as trading.** The stock directory reserves (8 symbols × 2 sides) made the test fail. Loosening the threshold to pass would have hidden real allocations.
+  - **It didn't replace the `nothrow` and array forms.** Under ASan those bypass the counter, so allocations through them were invisible and the test could pass while the code allocated. ASan's alloc-dealloc mismatch report exposed it.
+
+**5. 3 ns vs 11–12 ns, and the 2.6 ns floor.**
+- The `switch` is an indirect jump through a table. The branch predictor learns its target from history, so predictable types cost almost nothing.
+- With random types, about one mispredict per message (a pipeline flush of 15–20 cycles) adds about 8 ns.
+- The 2.6 ns floor is a dependency chain: each message's address comes from the previous message's length, so every iteration waits for a load (~5 cycles from L1), a byte swap and an add. Consecutive messages can't overlap.
+
+---
+
+## Stage 2: lock-free SPSC ring buffer and the two-thread pipeline
+
+### What runs where
+
+```
+ feed thread (core 2)                                 strategy thread (core 3)
+ parse ITCH → MarketBook → snapshot top 5 levels      pop → consume(update)
+                 │  (subscribed symbols, if changed)          ▲
+                 └──► SpscRing<BookUpdate, 4096> ─────────────┘
+                      128-byte slots, 512 KB, lock-free
+```
+
+| File | Role |
+|------|------|
+| `concurrency/spsc_ring.hpp` | the lock-free ring |
+| `common/cpu.hpp` | `cpu_relax` (PAUSE), `pin_current_thread`, `rdtsc`, `TscClock`, `CachePadded<T>` |
+| `common/latency_recorder.hpp` | preallocated samples, percentiles at the end |
+| `feed/book_update.hpp` | the 128-byte snapshot that crosses the ring |
+| `feed/feed_handler.hpp` | ITCH handler: book + subscriptions + publish |
+| `feed/pipeline.hpp` | starts the strategy thread, runs the feed, shuts down cleanly |
+| `apps/pipeline.cpp` | runs it on a file and reports latency percentiles |
+
+### The SPSC ring, piece by piece
+
+- **Single producer, single consumer.** Each index has exactly one writer, so plain atomic loads and stores are enough: no compare-and-swap, no retry loop, no lock. An MPMC queue needs CAS, and under contention a CAS loop costs far more than these stores.
+- **Power-of-two capacity, known at compile time.** `index & (N-1)` is a single AND.
+- **Counters that only increase.** Full is `write - read == N`, empty is `write == read`, and all N slots are usable. Wrapping indices can't tell full from empty without wasting a slot.
+- **Trivially copyable `T`.** A slot is a plain copy, with no constructors or destructors.
+- **Copy deleted.** Both threads hold a reference to the same ring, so it must never move.
+- **A big object.** 4096 × 128 B = 512 KB, so allocate it once with `make_unique`, never on a thread's stack.
+
+### Memory ordering: the core of the ring
+
+| Operation | Ordering | Why |
+|-----------|----------|-----|
+| Producer loads its own `write` | relaxed | Only this thread writes it |
+| Producer writes the slot | plain store | The data |
+| Producer stores `write + 1` | **release** | Everything written before it (the slot) is visible to whoever acquires this value |
+| Consumer loads `write` | **acquire** | Pairs with the release above: the slot is now safe to read |
+| Consumer stores `read + 1` | **release** | Its read of the slot is finished before the producer can reuse the slot |
+| Producer loads `read` | **acquire** | Pairs with the consumer's release: the slot is now safe to overwrite |
+
+- **Happens-before.** A release store, plus an acquire load that reads the value it stored, form a synchronises-with edge. Every write before the release is then visible after the acquire.
+- **Relaxed everywhere is a data race on the slot**, which is undefined behaviour. The compiler may move the slot write after the index store, and an ARM CPU may reorder them itself.
+- **On x86 acquire and release are free.** Plain loads already act as acquire and plain stores as release (x86's "TSO" memory model). The ordering costs nothing at run time there; it stops the *compiler* from reordering, and keeps the code correct on ARM.
+- **`seq_cst` costs something.** A sequentially consistent store compiles to `xchg` (about 20+ cycles), which this ring doesn't need.
+
+**Proof, not belief:**
+
+- The two-thread stress test pushes 1M items through a 16-slot ring and checks that each arrives once, in order and intact. It runs under TSan.
+- A **mutation test**: with the producer's release changed to relaxed, the same test under TSan reports a data race at `try_pop` (the slot read) against `try_push` (the slot write).
+- A **broken-ring canary**: a ring with only relaxed operations, which TSan must flag. The first version passed by accident:
+  - The consumer never used the values it popped, so the compiler deleted the slot read.
+  - With the read gone, there was no race left to detect.
+  - Same lesson as the benchmark that measured 0.000 ns: unused results get deleted.
+
+### False sharing, padding and index caching
+
+- **False sharing.** Two cores write different variables that share a 64-byte cache line, so the line bounces between them, roughly 100 ns per transfer, even though no data is actually shared.
+- **Padding:** the producer's fields, the consumer's fields and the slot array each start on their own 128-byte block (`alignas(kNoFalseSharing)`).
+  - Why 128 and not 64: Intel's spatial prefetcher fetches cache lines in adjacent pairs.
+  - `std::hardware_destructive_interference_size` exists, but GCC warns that its value can change with compiler flags, which would silently change our layout.
+- **Index caching:** each side keeps a private copy of the other side's index, and rereads the shared one only when its copy says full (producer) or empty (consumer). That saves a cross-core read on most operations.
+
+### What crosses the ring: snapshots, not deltas
+
+- **The strategy needs no book of its own.** All order bookkeeping stays on the feed thread.
+- **A snapshot is idempotent.** A dropped snapshot is fixed by the next one. A dropped delta corrupts the receiver's book until a resync.
+- **128 bytes, `alignas(64)`:** two whole cache lines, so no two updates share a line in the ring.
+- **Conflation:** if the top 5 levels didn't change (for example, an order added at level 8), nothing is sent.
+- **Saturation:** a level holding more than 4.29 billion shares shows as `UINT32_MAX`. Saturating is safer than wrapping to a small number.
+- **When the ring is full:**
+  - **Drop** (the default) counts the update and moves on. A slow strategy must never stall the feed; in stage 3 a stalled feed thread means UDP packets lost in the kernel.
+  - **Wait** spins until there is room, which loses nothing, but the feed runs at the strategy's speed.
+- **`last_sent` is the last *delivered* snapshot**, not the last one built. If it recorded a dropped snapshot, a book that then stopped changing would never be resent, and the strategy would stay stale forever. There is a test for exactly that.
+- **Sequence numbers count every attempted send**, so drops show up as gaps on the strategy side. The integration test checks that gaps plus drops after the last received update equal the feed's drop count. That invariant holds whatever the timing.
+
+### Threads: pinning, spinning, startup and shutdown
+
+- **Pinning.** `pthread_setaffinity_np` keeps each thread on its own core. A thread moved to another core starts with a cold cache.
+- **Busy polling with `pause`** (`cpu_relax`).
+  - Waking a sleeping thread (a futex or condition variable) costs tens of microseconds, so the strategy thread spins instead, burning its core.
+  - PAUSE saves power and helps a hyperthread sibling, but costs about 140 cycles on recent Intel server CPUs. In the experiment it changed throughput by up to 1.9×.
+- **Start handshake.** The feed waits until the strategy thread is pinned and running. Before that, thread creation (up to milliseconds) polluted the latency tail.
+- **Shutdown.**
+  - The feed sets `done` with release.
+  - The strategy loads it with acquire, then drains whatever is left before exiting.
+  - The pair guarantees every update pushed before `done` is visible to the drain.
+- **`std::jthread` (C++20)** joins in its destructor. A `std::thread` that is never joined calls `std::terminate`.
+
+### Three problems found by measuring
+
+| Symptom | Cause | Fix | Result |
+|---------|-------|-----|--------|
+| Feed at 595 ns/msg vs 60 ns single-threaded | The strategy thread polled `done`, which sat on the same cache line as the `FeedStats` the parser updates every message | `CachePadded<std::atomic<bool>> done` | **104 ns/msg (5.7× faster)** |
+| Ring hop p99 13–28 µs | `LatencyRecorder` used `reserve()`, which doesn't touch the memory, so it took a page fault every 512 samples | Write the whole buffer in the constructor | p99 down to 1.5 µs in quiet runs |
+| Tails up to 2 ms that varied run to run | The feed started before the strategy thread was running | Start handshake | Startup no longer in the samples |
+
+Each one was a hypothesis tested with a single change before it was kept.
+
+### The machine's noise floor
+
+A thread that only reads the TSC in a loop, pinned to core 2 or 3 of this cloud VM, was paused for:
+
+- more than 10 µs: about 2,600 times in 2 s
+- more than 100 µs: about 50 times
+- more than 1 ms: up to 8 times, the longest 5.1 ms
+
+No steal time was recorded, but the hypervisor and timer interrupts still take the core. So on this machine only the median and p90 of the pipeline's latency are meaningful; p99 and above measure the VM.
+
+On a production Linux box you would:
+
+- reserve cores for the hot threads (`isolcpus`)
+- turn off the timer tick on them (`nohz_full`)
+- move interrupts elsewhere (IRQ affinity)
+- disable deep C-states
+
+**Measure the machine before blaming the code.**
+
+### Results (cloud VM, Xeon @ 2.1 GHz, producer core 2, consumer core 3)
+
+Pipeline, 2M synthetic messages, 3 symbols subscribed, 5 runs:
+
+- Feed: 91–101 ns per message (the single-threaded baseline is 60 ns).
+- 229,627 updates sent, with 0 drops and 0 gaps.
+- Ring hop (publish to receive, TSC on two cores): **p50 339–369 ns, p90 470–537 ns.** p99 ranged from 1.5 µs to 2 ms (machine noise, see above).
+
+Ring micro-benchmarks, ranges over 4 runs:
+
+| Variant | Throughput, ns/item | Round trip p50 | Round trip p99 |
+|---------|---------------------|----------------|----------------|
+| SpscRing (real) | 52 – 84 | **537 – 611 ns** | **798 – 835 ns** |
+| Unpadded | 83 – 128 | 660 – 826 ns | 911 – 1,117 ns |
+| No index caching | 33 – 71 | 686 – 757 ns | 846 – 931 ns |
+| `std::mutex` ring | 170 – 188 | 2,255 – 2,637 ns | **26,200 – 26,700 ns** |
+
+How to read it:
+
+- **Latency results are consistent across every run.** The real ring has the lowest round trip; unpadded and no-caching each add 10–40%. The mutex is about 4× slower at the median and about 30× at p99. A lock means the losing thread can end up waiting in the kernel, and that shows up in the tail.
+- **The throughput results are not consistent on this VM**, except that the mutex is always slowest. A control (the same settings as the real ring, built from the benchmark's own variant class) matched the real ring within the noise, so the harness is sound.
+- **Index caching did not improve streaming throughput here.** The no-cache variant was faster in every run. A likely reason is that in streaming the producer and consumer end up next to each other in the ring, so the *slot* cache lines bounce between cores, and caching only saves *index* line transfers.
+- **Open question:** re-measure on bare metal, with `perf c2c` to show which cache lines bounce.
+
+### TSC across cores
+
+- One-way latency compares a timestamp taken on core 2 with one taken on core 3. That's valid only if the cores' TSCs are synchronised, which is true here (`constant_tsc`, `nonstop_tsc`, `tsc_known_freq`).
+- Not every machine guarantees it, so the strategy counts "clock skew" (a receive time earlier than the publish time) instead of recording a huge bogus latency.
+- The round-trip benchmark avoids the issue by timing on one core.
+
+### No allocation, again
+
+`NoAllocation.FeedHandlerPublishingAllocatesNothing` covers the feed thread's whole hot path: parse, book update, snapshot, comparison and push, with every symbol subscribed. It also runs the drop path, because no consumer runs. It makes 0 allocations.
+
+### C++ features used in this stage
+
+- `std::atomic`: `load` and `store` with `memory_order_relaxed`, `acquire` and `release`; `is_always_lock_free`
+- `alignas` on structs; the template `CachePadded<T>`
+- `static_assert` with `std::has_single_bit` and `std::is_trivially_copyable_v`
+- `std::jthread` (C++20); lambdas capturing by reference; `std::bitset`
+- `if constexpr` to build benchmark variants from one template
+- Preprocessor trap: commas inside template arguments split macro arguments (`EXPECT_DEATH(... BrokenRing<T, 16> ...)`)
+- Name lookup: GoogleTest's `Test::Setup()` member hid a namespace-level `struct Setup` inside a `TEST` body
+
+### Common mistakes from this stage
+
+1. Using `relaxed` for the index that publishes data, or `seq_cst` everywhere "to be safe".
+2. Flags, counters or indices of different threads on the same cache line.
+3. Reading the other thread's index on every operation.
+4. Measuring latency with a cold `reserve()`d buffer. `reserve` is not a prefault.
+5. Starting the measurement before every thread is running.
+6. Reporting p99 from a noisy machine without measuring the machine's own noise floor.
+7. Recording the last *built* message as "sent" when it was dropped.
+8. A concurrency test whose racy read the optimiser deleted.
+9. Comparing TSC values from different cores without knowing the TSCs are synchronised.
+
+### Interview questions (stage 2)
+
+1. Walk through `try_push` and `try_pop`. Which loads and stores need acquire or release, which can be relaxed, and what breaks if everything is relaxed? Why would the broken version probably still pass a test on x86?
+2. What is false sharing? Describe the bug in `run_pipeline`: how it showed up, how it was confirmed, and the before/after numbers. Why pad to 128 bytes rather than 64?
+3. Why does the feed send top-of-book snapshots instead of raw messages or deltas? What happens when the ring is full under each policy, and why must `last_sent` be the last *delivered* snapshot?
+4. The ring hop has a p50 of ~350 ns but a p99 anywhere from 1.5 µs to 2 ms. How did we separate what the code costs from what the machine adds, and what would you change on a production server?
+5. Why does a lock-free SPSC ring beat a mutex-protected queue, especially at p99? Index caching improved round-trip latency but not streaming throughput here. Give a plausible reason.

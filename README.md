@@ -4,8 +4,9 @@ A C++20 market-data pipeline: it parses Nasdaq TotalView-ITCH 5.0, rebuilds a
 limit order book, and runs a small ML model on order-book features in
 microseconds. Every stage is benchmarked (median and p99).
 
-> Status: stage 1 of 5 done: ITCH parser and full-market order book, with
-> no heap allocation on the hot path (enforced by a test).
+> Status: stages 0–2 of 5 done: ITCH parser, full-market order book, and a
+> two-thread pipeline joined by a lock-free SPSC ring buffer. No heap
+> allocation on the hot path (enforced by a test).
 > See [LEARNING.md](LEARNING.md) for the design notes and trade-offs.
 
 ## Architecture (target)
@@ -28,7 +29,7 @@ microseconds. Every stage is benchmarked (median and p99).
 |-------|-----------|-------|
 | 0 | CMake, presets, sanitizers, GoogleTest, Google Benchmark | done |
 | 1 | ITCH 5.0 parser and limit order book | done |
-| 2 | Lock-free SPSC ring buffer, two-thread pipeline | — |
+| 2 | Lock-free SPSC ring buffer, two-thread pipeline | done |
 | 3 | UDP multicast replay | — |
 | 4 | Order-book features, Python training, C++ inference | — |
 | 5 | End-to-end latency benchmarks and charts | — |
@@ -48,24 +49,42 @@ microseconds. Every stage is benchmarked (median and p99).
   - The ITCH handler: one order table for the whole market, books indexed by stock locate.
   - Feed anomalies are counted rather than thrown.
 
+### Stage 2 design in brief
+
+- **Ring** (`include/hft/concurrency/spsc_ring.hpp`)
+  - Bounded, lock-free, single-producer/single-consumer.
+  - Release/acquire on the two indices.
+  - The producer's and consumer's fields on separate 128-byte blocks, so the two cores don't fight over one cache line.
+  - Each side caches the other side's index.
+- **Feed handler** (`include/hft/feed/feed_handler.hpp`)
+  - After each message that touches a subscribed symbol, it sends a 128-byte snapshot of the top 5 levels, but only if they changed.
+  - When the ring is full it drops the update (the default) or waits.
+  - Sequence numbers let the strategy detect drops as gaps.
+- **Pipeline** (`include/hft/feed/pipeline.hpp`)
+  - Two pinned, busy-polling threads, with a start handshake and a release/acquire shutdown followed by a final drain.
+
 ## Repository layout
 
 ```
 include/hft/
-  common/     types.hpp, mapped_file.hpp
-  itch/       wire.hpp (big-endian I/O), messages.hpp, parser.hpp,
-              encoder.hpp, synthetic.hpp
-  book/       order_table.hpp, order_book.hpp, market_book.hpp
-src/          code off the hot path: mmap wrapper, synthetic feed generator
-apps/         itch_stats (replay a file through the book), itch_synth (make a feed)
-tests/        GoogleTest, one executable per component; support/reference_book.hpp
-bench/        Google Benchmark: clock cost, parser and book throughput
+  common/      types.hpp, mapped_file.hpp, cpu.hpp (pause, pinning, TSC),
+               latency_recorder.hpp
+  itch/        wire.hpp (big-endian I/O), messages.hpp, parser.hpp,
+               encoder.hpp, synthetic.hpp
+  book/        order_table.hpp, order_book.hpp, market_book.hpp
+  concurrency/ spsc_ring.hpp
+  feed/        book_update.hpp, feed_handler.hpp, pipeline.hpp
+src/           code off the hot path: mmap wrapper, TSC calibration, synthetic feeds
+apps/          itch_stats (replay a file through the book), itch_synth (make a feed),
+               pipeline (feed thread + strategy thread over the ring)
+tests/         GoogleTest, one executable per component; support/reference_book.hpp
+bench/         Google Benchmark: clock cost, parser and book throughput, SPSC ring
 cmake/        Sanitizers, CompilerWarnings, Dependencies
 scripts/      data download
 ```
 
 The hot path is header-only so it can be inlined across components. Later
-stages add the replay server and feed handler apps, and `python/`.
+stages add the UDP replay server and `python/`.
 
 ## Building
 
@@ -91,10 +110,12 @@ Or step by step: `cmake --preset release`, `cmake --build --preset release`,
 
 To use Clang, set `CXX` on the first configure: `CXX=clang++ cmake --preset release --fresh`.
 
-The 56 tests pass in all four presets, and with Clang 18. They include:
+The 73 tests pass in all four presets, and with Clang 18. They include:
 
 - a differential test of the order book against a `std::map` reference implementation
 - a test that replaces global `operator new` to prove the trading path makes zero allocations
+- a two-thread stress test of the ring, run under ThreadSanitizer
+- a deliberately broken (relaxed-ordering) ring that TSan must flag
 - sanitizer canaries that commit deliberate bugs and pass only if the sanitizer catches them
 
 ## Running it
@@ -106,7 +127,19 @@ The 56 tests pass in all four presets, and with Clang 18. They include:
 
 # Real Nasdaq data (see "Market data" below)
 ./build/release/apps/itch_stats data/01302019.NASDAQ_ITCH50 --symbol AAPL
+
+# Two threads: feed on core 2, strategy on core 3, joined by the ring
+./build/release/apps/pipeline /tmp/synth.itch --symbols SYN1,SYN3,SYN5
+./build/release/apps/pipeline /tmp/synth.itch --symbols SYN1,SYN3,SYN5 --wait   # never drop
 ```
+
+`pipeline` reports:
+
+- feed throughput
+- updates published, unchanged and dropped
+- sequence gaps seen by the strategy (they must equal the drops)
+- the ring-hop latency distribution (p50 to max)
+- whether the strategy's final view of each symbol matches the book
 
 `itch_stats` prints:
 
@@ -125,6 +158,7 @@ benchmarks for clean numbers.
 ```bash
 taskset -c 2 ./build/release/bench/clock_bench
 taskset -c 2 ./build/release/bench/itch_bench
+./build/release/bench/spsc_bench   # pins its own threads to cores 2 and 3
 ```
 
 For stable numbers, also set the CPU frequency governor to performance:
@@ -150,8 +184,30 @@ The large case is memory-bound: random lookups in a 48 MB table on 4 KB
 pages, so cache misses plus TLB misses. Parse-only cost is dominated by
 streaming the feed from memory and by mispredicting the jump on message type
 (≈8–9 ns per message when types arrive in random order; measured in
-LEARNING.md). Per-message p50/p99 latencies and the latency chart arrive in
-stage 5.
+LEARNING.md).
+
+SPSC ring between two cores, ranges over 4 runs. Each variant changes one
+thing from the real ring:
+
+| Variant | Throughput, ns/item | Round trip p50 | Round trip p99 |
+|---------|---------------------|----------------|----------------|
+| `SpscRing` (padded, cached indices) | 52 – 84 | **537 – 611 ns** | **798 – 835 ns** |
+| Unpadded | 83 – 128 | 660 – 826 ns | 911 – 1,117 ns |
+| No index caching | 33 – 71 | 686 – 757 ns | 846 – 931 ns |
+| `std::mutex` ring | 170 – 188 | 2,255 – 2,637 ns | 26,200 – 26,700 ns |
+
+How to read it:
+
+- **Latency is consistent across runs.** The real ring has the lowest round trip, and the mutex's p99 is 30× worse.
+- **Streaming throughput on this cloud VM varies too much to rank the lock-free variants.** Index caching did not help it here (see LEARNING.md).
+
+Full pipeline (2M messages, 3 symbols, 229,627 updates, 0 drops, 0 gaps):
+
+- The feed runs at 91–101 ns per message, against 60 ns single-threaded.
+- The ring hop (publish to receive) is **p50 339–369 ns, p90 470–537 ns.**
+- p99 ranged from 1.5 µs to 2 ms. That's this VM's noise: a thread that does nothing but spin was paused for more than 1 ms several times in 2 seconds.
+
+Per-stage p50/p99 latencies and the latency chart arrive in stage 5.
 
 ## Market data
 

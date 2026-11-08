@@ -21,11 +21,14 @@
 #include <cstdint>
 #include <cstdlib>
 #include <new>
+#include <memory>
 #include <span>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "hft/book/market_book.hpp"
+#include "hft/feed/feed_handler.hpp"
 #include "hft/itch/parser.hpp"
 #include "hft/itch/synthetic.hpp"
 
@@ -160,6 +163,28 @@ TEST(NoAllocation, TradingAllocatesNothing) {
   ASSERT_EQ(stats.messages, kOrderMessages);
   EXPECT_EQ(allocations, 0u);
   EXPECT_EQ(book.level_growth_events(), 0u);
+}
+
+TEST(NoAllocation, FeedHandlerPublishingAllocatesNothing) {
+  // The feed thread's full hot path: parse, book update, snapshot, compare,
+  // push. Every symbol subscribed and no consumer, so the ring fills and the
+  // drop path runs too.
+  const auto [setup, trading] = split_phases(feed());
+  auto ring = std::make_unique<hft::feed::UpdateRing>();
+  hft::feed::FeedHandler fh({.book = {.max_orders = 16'384, .levels_per_side = 64}, .on_full = hft::feed::OnFull::Drop},
+                            *ring);
+  for (int s = 0; s < kSymbols; ++s) fh.subscribe_ticker("SYN" + std::to_string(s));
+  hft::itch::parse_binary_file(setup, fh);  // resolves the subscriptions (allocates: setup)
+
+  std::size_t allocations = 0;
+  {
+    const AllocationCounter c;
+    hft::itch::parse_binary_file(trading, fh);
+    allocations = c.count();
+  }
+  EXPECT_EQ(allocations, 0u);
+  EXPECT_EQ(fh.stats().published, hft::feed::UpdateRing::kCapacity);
+  EXPECT_GT(fh.stats().dropped, 0u);
 }
 
 TEST(NoAllocation, GrowthBeyondReserveIsTheOnlySourceOfAllocations) {

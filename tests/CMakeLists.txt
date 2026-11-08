@@ -27,5 +27,8 @@ hft_add_test(order_table_test  SOURCES order_table_test.cpp  LIBS hft::core)
 hft_add_test(order_book_test   SOURCES order_book_test.cpp   LIBS hft::core)
 hft_add_test(market_book_test  SOURCES market_book_test.cpp  LIBS hft::core hft::testsupport)
 hft_add_test(mapped_file_test  SOURCES mapped_file_test.cpp  LIBS hft::core)
+hft_add_test(spsc_ring_test    SOURCES spsc_ring_test.cpp    LIBS hft::core)
+hft_add_test(feed_handler_test SOURCES feed_handler_test.cpp LIBS hft::core)
+hft_add_test(pipeline_test     SOURCES pipeline_test.cpp     LIBS hft::core)
 # Its own executable: it replaces the global operator new.
 hft_add_test(no_alloc_test     SOURCES no_alloc_test.cpp     LIBS hft::core)
