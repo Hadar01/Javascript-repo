@@ -35,6 +35,22 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
 - 2026-11-08: Found the competition and downloaded the data, the paper and 15 top notebooks (in the session scratchpad;
   re-download with the Kaggle API, which the proxy authenticates). Launched three expert agents
   (invsqrt / DQI / chemistry) to read the paper, the cited references, the verifiers and the notebooks.
-  Next: they debate, then we write the reading list and the attack plan.
+  The experts debated (see quantum-kaggle/briefs/). The plan and reading guide are in quantum-kaggle/PLAN.md.
+- Key conclusions:
+  - The chemistry λ_eff floor is 46.786 (public best 46.893), so weight refitting is finished as a lever.
+  - The chemistry levers left are the angle-loader Toffolis and the row-budget loophole:
+    a table with ≤ ~650 rows saves an address bit; shape (4,143,88) is predicted at 14.3×, but no table that size
+    has been shown to meet 20 mHa yet.
+  - DQI: profile the stages first; expected −10–15% cost.
+  - invsqrt: qubits 62→60 and rotations 41→35; expected −5–10% cost.
+  - Shared tool to build: a GF(2) AND-count minimiser for the DQI multiplier, chemistry loaders and the invsqrt table.
+  - Forecast with focused effort: 27.5–29.5.
+- NEXT ACTION: Phase 0 of PLAN.md. Submit the public portfolio (about 25.1), build the verifier harness and the
+  qubit/Toffoli profiler in Kaggle, then run the chemistry row-budget fit.
 - Constraint: running the downloaded kickmix.so locally was blocked by the permission policy. Run circuits in
   Kaggle notebooks instead, or ask the user to allow local runs.
+
+## Repo layout
+- PLAN.md: reading guide and phased plan
+- briefs/: three expert briefs plus three debate rebuttals
+- tools/chem_cost_model/: Agent C's numpy reimplementation of the chemistry metric and costs (stress.py reproduces the public 11.199×). It was written against scratchpad paths; set the data paths before use.
