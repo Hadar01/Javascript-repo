@@ -1,53 +1,185 @@
 {
   "_note": "Curated growth opportunities beyond full-time jobs. Researched 2026-11-07 — always confirm dates on the official link. deadline: ISO date, 'rolling', or 'expected:<YYYY-MM>' for cycles not yet announced. Add your own entries freely.",
   "items": [
-    { "id": "freelance:mercor", "category": "freelance", "title": "Mercor — AI expert / SWE / ML contract work", "url": "https://work.mercor.com/", "deadline": "rolling",
-      "payoff": "USD $14–$150/hr seen on listings; India SWE listings ~$14–30/hr, expert ML/coding eval roles much higher", "fit": 95,
-      "action": "Profile exists — now apply to 3–5 listings/week tagged Software Engineer, ML Engineer, Coding/LLM evaluation, Quantum/Physics expert. Redo the AI interview if your score was low; it gates everything." },
-    { "id": "freelance:upwork", "category": "freelance", "title": "Upwork — RAG / LangGraph / FastAPI gigs", "url": "https://www.upwork.com/nx/search/jobs/?q=RAG%20LangGraph", "deadline": "rolling",
-      "payoff": "$20–60/hr once you have 3–5 reviews; first 2 gigs may be cheap", "fit": 80,
-      "action": "Niche profile: 'RAG & AI agent engineer (LangGraph, FastAPI, AWS)'. Bid on small fixed-price RAG/chatbot jobs to build reviews." },
-    { "id": "freelance:outlier-alignerr", "category": "freelance", "title": "Outlier / Alignerr / Turing / micro1 — coding & STEM AI-training", "url": "https://outlier.ai/", "deadline": "rolling",
-      "payoff": "Part-time USD hourly; flexible, good side income while on GRF", "fit": 75,
-      "action": "Apply to 2 of these as backup to Mercor; pick C++/Python coding and physics/quantum domains." },
-    { "id": "freelance:toptal", "category": "freelance", "title": "Toptal / Arc.dev — vetted remote dev", "url": "https://arc.dev/", "deadline": "rolling",
-      "payoff": "$30–80/hr remote contracts", "fit": 55,
-      "action": "Apply after ~2 months of DSA grind — their screens are DSA + live coding." },
-
-    { "id": "comp:kaggle-quantum", "category": "competition", "title": "Kaggle: Google Quantum AI — Verifiable Quantum Circuit Compilation ($150k)", "url": "https://www.kaggle.com/competitions/google-verifiable-quantum-circuit-compilation", "deadline": "2027-01-20",
-      "payoff": "$150,000 prize pool; Google Quantum AI visibility — uniquely fits your Qiskit + C++ + ML profile", "fit": 98,
-      "action": "TOP PRIORITY. Join this week, read the rules/baseline, aim for a public notebook + top-10% finish. Even a bronze medal is a resume line no other fresher has." },
-    { "id": "comp:kaggle-gemma-agent", "category": "competition", "title": "Kaggle: Google — Gemma 4 Developer Agent Competition ($75k)", "url": "https://www.kaggle.com/competitions/gemma-4-developer-agent", "deadline": "2026-12-02",
-      "payoff": "$75,000; builds a shippable agent project (LangGraph/agentic skills)", "fit": 85,
-      "action": "~3.5 weeks left. Build a focused agent + writeup; doubles as portfolio project." },
-    { "id": "comp:kaggle-name-llm", "category": "competition", "title": "Kaggle: Name That LLM ($50k)", "url": "https://www.kaggle.com/competitions/name-that-llm", "deadline": "2027-01-14",
-      "payoff": "$50,000; LLM fine-tuning practice (your QLoRA/DPO skills)", "fit": 75, "action": "Second competition only if time allows after the quantum one." },
-
-    { "id": "phd:nus-qc-ai", "category": "phd", "title": "NUS Singapore — funded PhD, Quantum Computing + AI (CS dept route)", "url": "https://quantiki.org/position/3-5-phd-positions-quantum-computing-and-artificial-intelligence-nus-singapore", "deadline": "2026-12-15",
-      "payoff": "Fully funded PhD at a top-10 CS school in exactly your intersection (quantum + ML)", "fit": 90,
-      "action": "Email the PI this week with CV + 1-paragraph research fit; ask your IIT Delhi supervisor for a letter now." },
-    { "id": "phd:singa", "category": "phd", "title": "SINGA scholarship (A*STAR + NUS/NTU/SUTD/SMU), Aug 2027 intake", "url": "https://www.a-star.edu.sg/Scholarships/for-graduate-studies/singapore-international-graduate-award-singa", "deadline": "2026-12-01",
-      "payoff": "Full tuition + S$2,200+/month for up to 4 years", "fit": 80, "action": "Confirm 2027 deadline on A*STAR site; needs 2 referees — ask now." },
-    { "id": "phd:iitd-iisc-jul27", "category": "phd", "title": "IIT Delhi / IISc PhD — July 2027 cycle", "url": "https://home.iitd.ac.in/", "deadline": "expected:2027-03",
-      "payoff": "Funded PhD in India; as current IIT D GRF you have an inside track with your lab", "fit": 70,
-      "action": "Jan 2027 windows closed (Oct). Ask your supervisor about direct PhD conversion; register for GATE/check JRF eligibility." },
-    { "id": "phd:pmrf", "category": "phd", "title": "PMRF (Prime Minister's Research Fellowship), Dec-2026 cycle", "url": "https://www.pmrf.in/", "deadline": "expected:2027-01",
-      "payoff": "₹70k–80k/month + research grant — rivals a 10–12 LPA job", "fit": 65,
-      "action": "Only via institute nomination after PhD admission; ask IIT D PMRF coordinator if lateral entry applies to you." },
-    { "id": "phd:ellis", "category": "phd", "title": "ELLIS PhD Program (Europe, ML) — next cycle", "url": "https://ellis.eu/phd-postdoc", "deadline": "expected:2027-10",
-      "payoff": "Funded ML PhD with top European labs", "fit": 60, "action": "2027 call closed 31 Oct 2026; diarise for next Oct and build a paper by then." },
-
-    { "id": "fellow:msr-rf", "category": "fellowship", "title": "Microsoft Research India — Research Fellow (2027 cohort)", "url": "https://www.microsoft.com/en-us/research/academic-program/research-fellows-program-at-microsoft-rese", "deadline": "expected:2027-03",
-      "payoff": "1–2 yr paid research role at MSR India; top springboard to PhD at CMU/Stanford or to industry", "fit": 90,
-      "action": "You're the exact profile (BTech, <3 yrs out, research exp). Prepare resume + 1 strong letter now; interest form opens ~spring." },
-    { "id": "fellow:msr-fosse", "category": "fellowship", "title": "Microsoft CoreAI (FoSSE) Research Fellow — rolling, Bengaluru", "url": "https://jobs.anitab.org/companies/microsoft-2/jobs/90377804-research-fellow", "deadline": "rolling",
-      "payoff": "Paid research fellow role at Microsoft", "fit": 85, "action": "Email CV + letter to fosse-hiring@microsoft.com (per posting) — do this week." },
-    { "id": "fellow:qiskit-advocate", "category": "fellowship", "title": "IBM Qiskit Advocate — keep status active / go for mentor projects", "url": "https://www.ibm.com/quantum/blog/qiskit-advocate-program", "deadline": "rolling",
-      "payoff": "IBM Quantum network, mentorship program, conference invites", "fit": 70, "action": "You're already an Advocate — join the Advocate Mentorship Program and contribute to Qiskit repos." },
-    { "id": "oss:gsoc-2027", "category": "open-source", "title": "Google Summer of Code 2027 (Qiskit / ML orgs)", "url": "https://developers.google.com/open-source/gsoc/timeline", "deadline": "expected:2027-03",
-      "payoff": "$1,500–6,600 stipend + strong signal; open to non-students (beginners in OSS)", "fit": 75,
-      "action": "Start contributing to your target org (Qiskit, PyTorch, OpenCV) in Dec–Feb so your proposal is pre-validated." },
-    { "id": "cert:aws-saa", "category": "certification", "title": "AWS Solutions Architect – Associate (SAA-C03)", "url": "https://aws.amazon.com/certification/certified-solutions-architect-associate/", "deadline": "2027-01-15",
-      "payoff": "Credible cloud signal for SDE + MLOps roles", "fit": 80, "action": "Self-set deadline: book the exam for mid-Jan so prep has a hard stop." }
+    {
+      "id": "freelance:mercor",
+      "category": "freelance",
+      "title": "Mercor — AI expert / SWE / ML contract work",
+      "url": "https://work.mercor.com/",
+      "deadline": "rolling",
+      "payoff": "USD $14–$150/hr seen on listings; India SWE listings ~$14–30/hr, expert ML/coding eval roles much higher",
+      "fit": 95,
+      "action": "Profile exists — now apply to 3–5 listings/week tagged Software Engineer, ML Engineer, Coding/LLM evaluation, Quantum/Physics expert. Redo the AI interview if your score was low; it gates everything."
+    },
+    {
+      "id": "freelance:upwork",
+      "category": "freelance",
+      "title": "Upwork — RAG / LangGraph / FastAPI gigs",
+      "url": "https://www.upwork.com/nx/search/jobs/?q=RAG%20LangGraph",
+      "deadline": "rolling",
+      "payoff": "$20–60/hr once you have 3–5 reviews; first 2 gigs may be cheap",
+      "fit": 80,
+      "action": "Niche profile: 'RAG & AI agent engineer (LangGraph, FastAPI, AWS)'. Bid on small fixed-price RAG/chatbot jobs to build reviews."
+    },
+    {
+      "id": "freelance:outlier-alignerr",
+      "category": "freelance",
+      "title": "Outlier / Alignerr / Turing / micro1 — coding & STEM AI-training",
+      "url": "https://outlier.ai/",
+      "deadline": "rolling",
+      "payoff": "Part-time USD hourly; flexible, good side income while on GRF",
+      "fit": 75,
+      "action": "Apply to 2 of these as backup to Mercor; pick C++/Python coding and physics/quantum domains."
+    },
+    {
+      "id": "freelance:toptal",
+      "category": "freelance",
+      "title": "Toptal / Arc.dev — vetted remote dev",
+      "url": "https://arc.dev/",
+      "deadline": "rolling",
+      "payoff": "$30–80/hr remote contracts",
+      "fit": 55,
+      "action": "Apply after ~2 months of DSA grind — their screens are DSA + live coding."
+    },
+    {
+      "id": "fellow:google-student-researcher-2027",
+      "category": "fellowship",
+      "title": "Google Student Researcher 2027 (Remote, India) — DeepMind/Research/Cloud",
+      "url": "https://to.indeed.com/aadmck6drqps",
+      "deadline": "2026-12-04",
+      "payoff": "Paid research placement at Google; Quantum Information Science is a listed area",
+      "fit": 85,
+      "action": "Only if you are currently enrolled in a degree (BTech/MS/PhD). If your GRF is non-degree you're not eligible — re-check after PhD admission."
+    },
+    {
+      "id": "comp:kaggle-quantum",
+      "category": "competition",
+      "title": "Kaggle: Google Quantum AI — Verifiable Quantum Circuit Compilation ($150k)",
+      "url": "https://www.kaggle.com/competitions/google-verifiable-quantum-circuit-compilation",
+      "deadline": "2027-01-20",
+      "payoff": "$150,000 prize pool; Google Quantum AI visibility — uniquely fits your Qiskit + C++ + ML profile",
+      "fit": 98,
+      "action": "TOP PRIORITY. Join this week, read the rules/baseline, aim for a public notebook + top-10% finish. Even a bronze medal is a resume line no other fresher has."
+    },
+    {
+      "id": "comp:kaggle-gemma-agent",
+      "category": "competition",
+      "title": "Kaggle: Google — Gemma 4 Developer Agent Competition ($75k)",
+      "url": "https://www.kaggle.com/competitions/gemma-4-developer-agent",
+      "deadline": "2026-12-02",
+      "payoff": "$75,000; builds a shippable agent project (LangGraph/agentic skills)",
+      "fit": 85,
+      "action": "~3.5 weeks left. Build a focused agent + writeup; doubles as portfolio project."
+    },
+    {
+      "id": "comp:kaggle-name-llm",
+      "category": "competition",
+      "title": "Kaggle: Name That LLM ($50k)",
+      "url": "https://www.kaggle.com/competitions/name-that-llm",
+      "deadline": "2027-01-14",
+      "payoff": "$50,000; LLM fine-tuning practice (your QLoRA/DPO skills)",
+      "fit": 75,
+      "action": "Second competition only if time allows after the quantum one."
+    },
+    {
+      "id": "phd:nus-qc-ai",
+      "category": "phd",
+      "title": "NUS Singapore — funded PhD, Quantum Computing + AI (CS dept route)",
+      "url": "https://quantiki.org/position/3-5-phd-positions-quantum-computing-and-artificial-intelligence-nus-singapore",
+      "deadline": "2026-12-15",
+      "payoff": "Fully funded PhD at a top-10 CS school in exactly your intersection (quantum + ML)",
+      "fit": 90,
+      "action": "Email the PI this week with CV + 1-paragraph research fit; ask your IIT Delhi supervisor for a letter now."
+    },
+    {
+      "id": "phd:singa",
+      "category": "phd",
+      "title": "SINGA scholarship (A*STAR + NUS/NTU/SUTD/SMU), Aug 2027 intake",
+      "url": "https://www.a-star.edu.sg/Scholarships/for-graduate-studies/singapore-international-graduate-award-singa",
+      "deadline": "2026-12-01",
+      "payoff": "Full tuition + S$2,200+/month for up to 4 years",
+      "fit": 80,
+      "action": "Confirm 2027 deadline on A*STAR site; needs 2 referees — ask now."
+    },
+    {
+      "id": "phd:iitd-iisc-jul27",
+      "category": "phd",
+      "title": "IIT Delhi / IISc PhD — July 2027 cycle",
+      "url": "https://home.iitd.ac.in/",
+      "deadline": "expected:2027-03",
+      "payoff": "Funded PhD in India; as current IIT D GRF you have an inside track with your lab",
+      "fit": 70,
+      "action": "Jan 2027 windows closed (Oct). Ask your supervisor about direct PhD conversion; register for GATE/check JRF eligibility."
+    },
+    {
+      "id": "phd:pmrf",
+      "category": "phd",
+      "title": "PMRF (Prime Minister's Research Fellowship), Dec-2026 cycle",
+      "url": "https://www.pmrf.in/",
+      "deadline": "expected:2027-01",
+      "payoff": "₹70k–80k/month + research grant — rivals a 10–12 LPA job",
+      "fit": 65,
+      "action": "Only via institute nomination after PhD admission; ask IIT D PMRF coordinator if lateral entry applies to you."
+    },
+    {
+      "id": "phd:ellis",
+      "category": "phd",
+      "title": "ELLIS PhD Program (Europe, ML) — next cycle",
+      "url": "https://ellis.eu/phd-postdoc",
+      "deadline": "expected:2027-10",
+      "payoff": "Funded ML PhD with top European labs",
+      "fit": 60,
+      "action": "2027 call closed 31 Oct 2026; diarise for next Oct and build a paper by then."
+    },
+    {
+      "id": "fellow:msr-rf",
+      "category": "fellowship",
+      "title": "Microsoft Research India — Research Fellow (2027 cohort)",
+      "url": "https://www.microsoft.com/en-us/research/academic-program/research-fellows-program-at-microsoft-rese",
+      "deadline": "expected:2027-03",
+      "payoff": "1–2 yr paid research role at MSR India; top springboard to PhD at CMU/Stanford or to industry",
+      "fit": 90,
+      "action": "You're the exact profile (BTech, <3 yrs out, research exp). Prepare resume + 1 strong letter now; interest form opens ~spring."
+    },
+    {
+      "id": "fellow:msr-fosse",
+      "category": "fellowship",
+      "title": "Microsoft CoreAI (FoSSE) Research Fellow — rolling, Bengaluru",
+      "url": "https://jobs.anitab.org/companies/microsoft-2/jobs/90377804-research-fellow",
+      "deadline": "rolling",
+      "payoff": "Paid research fellow role at Microsoft",
+      "fit": 85,
+      "action": "Email CV + letter to fosse-hiring@microsoft.com (per posting) — do this week."
+    },
+    {
+      "id": "fellow:qiskit-advocate",
+      "category": "fellowship",
+      "title": "IBM Qiskit Advocate — keep status active / go for mentor projects",
+      "url": "https://www.ibm.com/quantum/blog/qiskit-advocate-program",
+      "deadline": "rolling",
+      "payoff": "IBM Quantum network, mentorship program, conference invites",
+      "fit": 70,
+      "action": "You're already an Advocate — join the Advocate Mentorship Program and contribute to Qiskit repos."
+    },
+    {
+      "id": "oss:gsoc-2027",
+      "category": "open-source",
+      "title": "Google Summer of Code 2027 (Qiskit / ML orgs)",
+      "url": "https://developers.google.com/open-source/gsoc/timeline",
+      "deadline": "expected:2027-03",
+      "payoff": "$1,500–6,600 stipend + strong signal; open to non-students (beginners in OSS)",
+      "fit": 75,
+      "action": "Start contributing to your target org (Qiskit, PyTorch, OpenCV) in Dec–Feb so your proposal is pre-validated."
+    },
+    {
+      "id": "cert:aws-saa",
+      "category": "certification",
+      "title": "AWS Solutions Architect – Associate (SAA-C03)",
+      "url": "https://aws.amazon.com/certification/certified-solutions-architect-associate/",
+      "deadline": "2027-01-15",
+      "payoff": "Credible cloud signal for SDE + MLOps roles",
+      "fit": 80,
+      "action": "Self-set deadline: book the exam for mid-Jan so prep has a hard stop."
+    }
   ]
 }

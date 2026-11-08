@@ -18,3 +18,9 @@ None of these postings list pay. Indeed hides it for most Indian jobs, so the "f
 - [Endpoint Engineer C++17](https://to.indeed.com/aacv67vlwfdf), Smart Working, remote on UK hours. Needs 5 yrs of C++; worth it later.
 - [Senior LLMOps Engineer (AWS & GenAI)](https://to.indeed.com/aaq8hwg97phq), Norstella, remote. Senior, but your exact stack.
 - [Staff/Senior C++ Engineer](https://to.indeed.com/aamf4wxr64th), TeamViewer, Noida.
+
+## Update, 8 Nov 2026
+- [Google Student Researcher 2027](https://to.indeed.com/aadmck6drqps) is remote from India and lists Quantum Information Science as an area. **Deadline 4 Dec.** You must be currently enrolled in a degree program, so you're eligible only if you're still enrolled somewhere.
+- [Amazon SDE I, FinOps](https://to.indeed.com/aa74zhkfrw47) is in Bengaluru and asks for 1+ yr of non-internship experience. Your GRF year may count. It was posted in May, so check it's still open on amazon.jobs.
+- Skipped: VoxFlow AI/ML Engineer in Noida. It's a good stack match (RAG/LangGraph/FastAPI) but pays ₹4–10 LPA, below your target.
+- Skipped: L&T Quantum Computing Associate in Chennai. It's a fresher-band role and likely under 15 LPA.
