@@ -66,3 +66,62 @@ Baseline: public v95 `$S/cand/pub/invsqrt.kmb`. File sha 1c5b1ee2…. Ratio 21.7
 Recommendation: write our own readable generator reproducing the public architecture. Start from the Apache-2.0 93-qubit sources extracted to `$S/kg/alex_src`. Then attack the delay line and the reverse-arithmetic asymmetry. This is a multi-day job; nothing quick is left on this binary.
 
 Note: one early run of `kmx_analyze.py` (before the dict fix) hit the OOM killer at about 25 GB. If any background job died at about 18:44, that was the cause.
+
+---
+## Milestone 1: our own generator (Agent A, all our code)
+
+**Status:** working and passing, but not yet at public cost.
+
+**Files** (in `quantum-kaggle/tools/invsqrt/`):
+- `model.py`: exact integer model, backward/interval table fit and exact all-x certificate.
+  - The certificate uses the verifier's own isqrt target and tolerance.
+  - It also has the L/H and residual/coarse layout.
+- `gen.py`: primitives and the v1 circuit:
+  - Gidney adder with carry-in and top-carry reuse;
+  - signed-digit rows using the ~(~T+v) trick;
+  - prefix-chain flags and binary CSWAP normalisation;
+  - barrel shift with empty-target moves and per-bit Z_POW.
+- `gen2.py`: the v2 circuit, which adds:
+  - L/H split of K0 (rows touch 21 bits);
+  - residual/coarse split of K1 (R rows touch 12 bits);
+  - early phase of H, then its measurement-based unlookup;
+  - borrowed x[21].
+- `upstream/`: copies of the Apache-2.0 93-qubit sources, for reading and credit only. Running them was refused by the permission classifier (downloaded code), so everything here was rewritten from scratch.
+
+**Model** (f2 10, f1 19, fy 28, gy 2, w2 9, drop {5}, 256 quadratic segments):
+- exact certificate: worst 0.910 of tolerance;
+- minimum margin 9.6e7 units (5.2e-12 turns), better than the public 3.18e-12.
+
+**Quick check results** (all x, 1 shot):
+
+| file | Q | Toffolis | rotations | C | cost | ratio |
+|---|---|---|---|---|---|---|
+| inv_a1.kmb | 108 | 1714 | 33 | 1946.8 | 210,257 | 9.88 |
+| inv_a2.kmb | 94 | 1469 | 44 | 1781.9 | 167,499 | 12.40 |
+
+v2 reproduces the old 93-qubit public line (165k).
+
+**Qubit anatomy at the v2 peak (Y rows):**
+
+| register | qubits |
+|---|---|
+| x | 21 (+1 borrowed) |
+| flags | 5 |
+| r | 12 |
+| C | 7 |
+| K2 | 9 |
+| L | 21 |
+| Gidney carries | 19 |
+| **total** | **94** |
+
+The public line reaches 62 qubits. Its liveness profile shows x[17..20] zeroed during the arithmetic, so it re-encodes the address bits into the table/arithmetic registers, plus other tricks we have not yet reverse-engineered.
+
+**Exchange rates in our design** at Q 94, C 1782:
+- 1 qubit ≈ 19 Toffoli-equivalents.
+- Cuccaro rows: worse (−19 qubits for +560 Toffolis).
+- Erasing K2 and re-looking it up with kickmix's 254-Toffoli lookup: worse.
+- Two-chunk carries with a comparator fix-up: about break-even.
+- So the big win needs:
+  - a cheap custom lookup (public 150 vs kickmix 254+25), which makes re-lookup and erase strategies pay;
+  - address-bit re-encoding (frees about 4–8 x qubits);
+  - cheaper normalisation (our 79+79 CSWAPs vs public 47+48).
