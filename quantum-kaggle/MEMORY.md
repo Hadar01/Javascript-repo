@@ -83,6 +83,23 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
       {competitionName, kernelOwner, kernelSlug, kernelVersion, fileName, submissionDescription}.
     - Push a notebook with POST /api/v1/kernels/push.
 
+- 2026-11-08 ~12:50 UTC:
+  - Submission 58126741 scored **25.13667** on the public leaderboard: **rank 255 of 2,630**.
+  - Leaderboard thresholds now:
+
+    | Rank | Score |
+    |---|---|
+    | 1 | 29.301 |
+    | 10 | 27.080 |
+    | 26 | 26.260 |
+    | 100 | 25.183 |
+
+  - **This is our current best. Every new submission must beat it.**
+  - Plan changes from the edge brief:
+    - Fusion becomes a main track; a #1-team member estimates 40–45× is possible.
+    - Use Gu et al.'s profiler (github.com/andigu/uncompute) instead of building our own.
+    - Look for a team merger before 2027-01-13.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
