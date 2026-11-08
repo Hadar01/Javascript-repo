@@ -100,6 +100,19 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - Use Gu et al.'s profiler (github.com/andigu/uncompute) instead of building our own.
     - Look for a team merger before 2027-01-13.
 
+- 2026-11-08 evening (local runs approved by the user; kickmix 1.0.0 installed from PyPI in a scratch venv):
+  - Public v95 portfolio checked locally:
+    - invsqrt 21.7762 (62 qubits, 1538.2 Toffoli-equivalents)
+    - dqi 65.2181
+    - chem 11.1981
+    - combined about 25.15
+  - DEAD END, invsqrt gate-level: 0 of 1,409 Toffolis are removable, the rotation angles are optimal, and merging
+    41→33 rotations costs a qubit. Next is our own readable generator (reverse arithmetic, phase shift, 61 qubits).
+  - DEAD END, chemistry smaller table (4,143,88): error_2 plateaus at about 89 mHa against the 20 mHa gate.
+  - DEAD END, chemistry weight refit: the weights are at a local optimum; at most 0.09% is available.
+  - Chemistry margins: a fresh private salt cannot change error_1, error_2, Λ or E_gap.
+  - Next for chemistry: a lookup-cost-aware new table on a Kaggle GPU (notebooks/chem_gpu_refit.ipynb).
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
