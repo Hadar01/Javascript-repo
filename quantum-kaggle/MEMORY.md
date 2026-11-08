@@ -50,7 +50,17 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
 - Constraint: running the downloaded kickmix.so locally was blocked by the permission policy. Run circuits in
   Kaggle notebooks instead, or ask the user to allow local runs.
 
+- 2026-11-08 (later):
+  - Kaggle user is `aarushpandey`; we had 0 submissions at this point.
+  - Pushed the private notebook https://www.kaggle.com/code/aarushpandey/qcc-baseline-harness
+    (source: quantum-kaggle/notebooks/qcc_baseline_harness.ipynb). It rebuilds the public portfolio from the dataset
+    heliosli/qcc-circuits-live, verifies it under our own salt, and writes submission.zip. Its harness has
+    score_task() and profile_circuit().
+  - Launched the Edge-Finder agent, which is restricted to legitimate public edges and reports loopholes without
+    exploiting them. Output goes to briefs/E_edges.md.
+
 ## Repo layout
+- notebooks/: Kaggle notebooks we push (private by default)
 - PLAN.md: reading guide and phased plan
 - briefs/: three expert briefs plus three debate rebuttals
 - tools/chem_cost_model/: Agent C's numpy reimplementation of the chemistry metric and costs (stress.py reproduces the public 11.199×). It was written against scratchpad paths; set the data paths before use.
