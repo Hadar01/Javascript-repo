@@ -125,3 +125,46 @@ The public line reaches 62 qubits. Its liveness profile shows x[17..20] zeroed d
   - a cheap custom lookup (public 150 vs kickmix 254+25), which makes re-lookup and erase strategies pay;
   - address-bit re-encoding (frees about 4–8 x qubits);
   - cheaper normalisation (our 79+79 CSWAPs vs public 47+48).
+
+---
+## Step 2 (priorities 1–3): stopped at a blocker
+
+### 1. Custom lookup at ≤ 150 Toffolis: not achievable with generic methods
+- I computed the ANF of all 57 table bits (r0, C, K2, L0, H) over the 8 address bits (e, a6..a0).
+  - Every bit except the top two H bits is ANF-dense: 100–140 monomials of degree ≥ 2 each.
+  - Together they use 247 of the 247 possible such monomials.
+  - So a monomial bank, hi/lo split products, or select-swap at this size all cost ≥ 255, the same as unary iteration (kickmix's 254 + 25).
+- The public 169-AND decode is a whole-table XOR-AND-graph synthesis. Its CCX controls are pairs of linear forms of the address bits, and earlier output wires are reused as factors. That is SAT- or window-resynthesis-level work.
+- I wrote a greedy XAG synthesizer (`xag.py`). For a fixed first factor l1, the condition t+s = l1·l2 is LINEAR in (s, l2). It also makes un-lookup free: erase in reverse order with Clifford fix-ups.
+  - It fails at the start: with only the 9 address/constant wires, random factor sampling finds no decomposition.
+  - It needs a constructive seeding strategy. Not done.
+- Expected gain even if solved: about 80–110 Toffolis, i.e. ratio 12.4 → ~13.
+
+### 2. Freeing x[17..20]
+- This requires the address to be recoverable cheaply from table registers that are not modified during the Y rows (C, K2, or a kept H).
+- A plausible route is comparator functions of the monotone coarse field C. Estimated −4 qubits for +40–60 Toffolis, about break-even to a small win.
+
+### 3. Normalisation 79 → 47 CSWAPs
+- The public network is a sequence of controlled interval reversals: rev[0..11], (12,21), rev[0..19], rev[0..20], rev[1..21], (0,4), rev[6..20], rev[16..20].
+- Its control is a single wire (q48) that is re-targeted by CNOT and HMR between groups, so intermediate states are mirrored and pairs of reversals compose into shifts.
+- Reproducing it needs a small search over reversal/control sequences. Worth about 63 Toffolis (~3.5%).
+
+### Why ratio 21 is out of reach this session
+The gap is mostly qubits: 94 now, versus 62 for the public circuit.
+
+| change | qubits | Toffolis |
+|---|---|---|
+| erase K2 by measurement and recompute it via a cheap partial XAG lookup | −9 | +~30 |
+| free the address bits | −8 | +~60 |
+| two-chunk L carries | −8 | +~140 |
+| custom lookup | | −~100 |
+| normalisation network | | −~60 |
+
+This gets to about Q 69, C ~1830, cost ~126k, ratio ~16.5.
+
+The rest (to 62 qubits at C ~1540) needs the public's remaining tricks. Its live set during the arithmetic is only 36 non-x qubits, less than R (19) + L (21) in our layout. So it must release or narrow R and L during the rows, for example by measuring out R's low bits progressively and recomputing them cheaply, or by "write-only runs".
+
+### Recommended next step
+Semantic lifting of the public circuit with our bit-packed simulator (`kmx_analyze.py`). For each live qubit at each checkpoint, test over all 3.1M x whether its value equals a bit of a known quantity: x_n, the address, table fields, R, partial sums of the Q rows, the flags.
+
+This turns the opaque stream into an architecture diagram in hours rather than days. After that, we can re-implement it readably in `gen2.py`.

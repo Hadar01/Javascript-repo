@@ -79,7 +79,7 @@ try:
     import kickmix  # noqa
 except ImportError:
     subprocess.run([sys.executable, '-m', 'pip', 'install', '-q', 'kickmix'], check=False)
-subprocess.run(['nvidia-smi'], check=False)""")
+subprocess.run('nvidia-smi || echo no GPU visible', shell=True)\ntry:\n    import jax; print('jax devices:', jax.devices())\nexcept Exception as e:\n    print('jax import failed:', e)""")
 
 import base64
 code("import base64\nPATCH_B64 = '" + base64.b64encode(PATCH.encode()).decode() + "'\n"
