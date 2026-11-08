@@ -180,6 +180,66 @@
       "payoff": "Credible cloud signal for SDE + MLOps roles",
       "fit": 80,
       "action": "Self-set deadline: book the exam for mid-Jan so prep has a hard stop."
+    },
+    {
+      "id": "quantum-co:qpiai",
+      "category": "quantum-industry",
+      "title": "QpiAI (Bangalore) — AI + quantum computing",
+      "url": "https://www.qpiai.tech/",
+      "deadline": "rolling",
+      "payoff": "India-based; quantum + ML is your exact combo. Best realistic quantum job target.",
+      "fit": 88,
+      "action": "Find 1 engineer + 1 researcher on LinkedIn; send a short note referencing your Qiskit Advocate status + the Google Quantum AI Kaggle notebook (once published). Ask about software/ML roles, not hardware."
+    },
+    {
+      "id": "quantum-co:qnulabs",
+      "category": "quantum-industry",
+      "title": "QNu Labs (Bangalore) — quantum-safe security / QKD / PQC",
+      "url": "https://www.qnulabs.com/",
+      "deadline": "rolling",
+      "payoff": "India-based; your HCLTech quantum-security internship maps directly.",
+      "fit": 88,
+      "action": "Find 1 engineer + 1 researcher on LinkedIn; send a short note referencing your Qiskit Advocate status + the Google Quantum AI Kaggle notebook (once published). Ask about software/ML roles, not hardware."
+    },
+    {
+      "id": "quantum-co:riverlane",
+      "category": "quantum-industry",
+      "title": "Riverlane (Cambridge, UK) — quantum error correction",
+      "url": "https://www.riverlane.com/",
+      "deadline": "rolling",
+      "payoff": "QEC decoders = C++ + ML + performance work. Abroad/visa; aim for internship or post-PhD.",
+      "fit": 72,
+      "action": "Find 1 engineer + 1 researcher on LinkedIn; send a short note referencing your Qiskit Advocate status + the Google Quantum AI Kaggle notebook (once published). Ask about software/ML roles, not hardware."
+    },
+    {
+      "id": "quantum-co:classiq",
+      "category": "quantum-industry",
+      "title": "Classiq (Tel Aviv) — quantum software platform",
+      "url": "https://www.classiq.io/",
+      "deadline": "rolling",
+      "payoff": "Software-first quantum co; has community/advocate programs worth joining.",
+      "fit": 68,
+      "action": "Find 1 engineer + 1 researcher on LinkedIn; send a short note referencing your Qiskit Advocate status + the Google Quantum AI Kaggle notebook (once published). Ask about software/ML roles, not hardware."
+    },
+    {
+      "id": "quantum-co:quantum-machines",
+      "category": "quantum-industry",
+      "title": "Quantum Machines (Tel Aviv) — control systems for quantum hardware",
+      "url": "https://www.quantum-machines.co/",
+      "deadline": "rolling",
+      "payoff": "Python/C++ control-stack roles; abroad.",
+      "fit": 62,
+      "action": "Find 1 engineer + 1 researcher on LinkedIn; send a short note referencing your Qiskit Advocate status + the Google Quantum AI Kaggle notebook (once published). Ask about software/ML roles, not hardware."
+    },
+    {
+      "id": "quantum-co:quera",
+      "category": "quantum-industry",
+      "title": "QuEra (Boston) — neutral-atom computers",
+      "url": "https://www.quera.com/",
+      "deadline": "rolling",
+      "payoff": "Open-source Bloqade (Julia/Python) — contribute to get noticed.",
+      "fit": 60,
+      "action": "Find 1 engineer + 1 researcher on LinkedIn; send a short note referencing your Qiskit Advocate status + the Google Quantum AI Kaggle notebook (once published). Ask about software/ML roles, not hardware."
     }
   ]
 }
