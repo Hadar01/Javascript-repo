@@ -705,3 +705,184 @@ How to read it:
 3. Why does the feed send top-of-book snapshots instead of raw messages or deltas? What happens when the ring is full under each policy, and why must `last_sent` be the last *delivered* snapshot?
 4. The ring hop has a p50 of ~350 ns but a p99 anywhere from 1.5 µs to 2 ms. How did we separate what the code costs from what the machine adds, and what would you change on a production server?
 5. Why does a lock-free SPSC ring beat a mutex-protected queue, especially at p99? Index caching improved round-trip latency but not streaming throughput here. Give a plausible reason.
+
+#### Model answers (stage 2)
+
+**1. The orderings in `try_push` and `try_pop`.**
+
+| Operation | Ordering |
+|-----------|----------|
+| Each side loads its own index | relaxed (it is the only writer) |
+| Producer writes the slot | plain store |
+| Producer stores `write` | **release** |
+| Consumer loads `write` | **acquire** |
+| Consumer stores `read` | **release** |
+| Producer loads `read` | **acquire** |
+
+- **All relaxed:** there's no happens-before between writing a slot and reading it, so it is a data race and undefined behaviour.
+  - The compiler may move the slot store after the index store, and ARM may reorder them in hardware.
+  - The consumer can then read a stale or half-written slot, or the producer can overwrite a slot that is still being read.
+- **Why it might pass on x86:** x86 is TSO. It never reorders a store with another store, or a load with another load. So only the *compiler* can break it, which is why the bug can hide for a long time.
+- TSan checks the C++ memory model rather than the hardware, so it flags it, as our mutation test showed.
+
+**2. False sharing.**
+- Two cores write *different* variables that sit on the same cache line. The coherence protocol (MESI) moves the whole line to whichever core writes, invalidating the other core's copy, so every write costs a line transfer.
+- **The bug:** the strategy thread polled `done` (whenever the ring was empty), and `done` sat next to the `FeedStats` the feed thread updates on every message.
+  - Symptom: 595 ns per message against 60 ns single-threaded.
+  - Confirmed by changing one thing: `done` moved to its own 128-byte block gave 104 ns.
+- **128 rather than 64:** Intel's adjacent-line prefetcher fetches lines in 128-byte pairs, so a neighbour in the paired line still interferes.
+
+**3. Snapshots, the full-ring policies, `last_sent`.**
+- **Why snapshots:**
+  - The strategy needs no book of its own.
+  - Snapshots are idempotent, so a drop is harmless: the next snapshot replaces it.
+  - Only the subscribed symbols' changes cross the ring, not every message in the market.
+  - Deltas need reliable delivery plus a resync mechanism.
+- **Full ring:** Drop counts the update, and the strategy sees a sequence gap. Wait spins until there's room, so nothing is lost, but the feed slows down; on a network feed that means the kernel starts dropping packets.
+- **`last_sent` must be the last *delivered* snapshot.** If it recorded a dropped one, a book that then stopped changing would look "unchanged" forever and never be resent.
+
+**4. Separating the code's cost from the machine's.**
+- Each suspect was a hypothesis tested with one change: false sharing, page faults, the startup transient.
+- Then the machine's own noise floor: a pinned loop doing nothing but reading the TSC was paused for more than 1 ms several times in 2 s. So the tails here measure the VM, not the code.
+- On a production server:
+  - bare metal, not a VM
+  - reserve cores for the hot threads (`isolcpus`, `nohz_full`, `rcu_nocbs`) and move interrupts off them (IRQ affinity)
+  - the `performance` frequency governor, with deep C-states disabled
+  - huge pages, `mlockall`, and everything prefaulted
+  - no system calls on the hot path
+
+**5. Lock-free ring vs mutex, and why caching helped latency only.**
+- **The mutex:** every operation is an atomic read-modify-write on a shared lock word, and the producer and consumer serialise on it. Under contention the losing thread can end up sleeping in the kernel (futex), and waking it costs tens of µs. That's the p99 of 26 µs against 0.8 µs.
+- **Caching helped the round trip** because each push skipped one cross-core read of the other side's index: one fewer cache-line transfer per hop.
+- **It didn't help streaming here** because the producer and consumer work on neighbouring slots, so the slot cache lines bouncing between cores dominate, and the cached index doesn't touch that. PAUSE timing adds noise on top.
+
+---
+
+## Stage 3: UDP multicast replay
+
+### What runs where
+
+```
+replay_server (process, core 1)                 feed_handler (process)
+ ITCH file → MoldUDP64 packets, paced by          network thread (core 2):
+ timestamps ──► multicast 239.255.1.1 (line A) ──►  recv A/B → merge by sequence → gaps/dups
+            └─► multicast 239.255.1.2 (line B) ──►  → ITCH parse → book → snapshot → ring
+                                                  strategy thread (core 3): pop, measure
+```
+
+| File | Role |
+|------|------|
+| `net/moldudp64.hpp` | packet format: header decode, bounds-checked message walk, `PacketBuilder` |
+| `net/sequence_tracker.hpp` | new / duplicate / overlap / gap decision per packet |
+| `net/udp_socket.hpp`, `src/net/udp_socket.cpp` | RAII socket: bind, multicast join, buffers, non-blocking recv, kernel counters |
+| `net/mold_receiver.hpp` | busy-poll loop, A/B merge, hands messages to the ITCH parser |
+| `itch/framing.hpp` | walks a BinaryFILE without parsing (for the replayer) |
+| `feed/pipeline.hpp` | now takes any source: file or network |
+| `apps/replay_server.cpp`, `apps/feed_handler.cpp` | the two processes |
+
+### MoldUDP64, the packet format Nasdaq uses
+
+- **Header** (20 bytes): session (10 ASCII bytes), the sequence number of the first message (8 bytes, BE), and the message count (2 bytes, BE). Then each message as `[2-byte length][bytes]`.
+- **Sequence numbers count messages, not packets.** A packet `(seq s, count n)` carries messages s .. s+n-1, so the next packet should start at s+n. That's how loss is detected.
+- **Heartbeat** (count 0): sent while idle, carrying the *next* sequence number. That reveals messages lost at the end of a burst, which no later data packet would otherwise expose.
+- **End of session** (count 0xFFFF): sent three times, because a single lost copy would leave receivers waiting for their timeout. It also carries the next sequence number, so it reveals loss at the very end.
+- **Every length comes from the network.** Each block is bounds-checked against the packet, as in the BinaryFILE parser.
+
+### Packet size and the MTU
+
+- A UDP datagram larger than the path's MTU is split into IP fragments, and losing **any** fragment loses the whole datagram. Feeds never fragment.
+- The payload limit is MTU − 20 (IP header) − 8 (UDP header): **1472 bytes** for the usual 1500, and **1372** in this container, whose `eth0` MTU is 1400.
+
+### The replay server: pacing like an exchange
+
+- Each message has a due time: `start + (timestamp − first timestamp) / speed`.
+- If the next message isn't due yet (more than 1 µs away), the current packet goes out *now*, so messages are never held back to fill a packet. Then the server waits.
+- Messages due within 1 µs of each other share a packet: 6.1 per packet at real time, 44.3 with no pacing.
+- **Long waits sleep; short ones spin.** Spinning through a 30-second quiet spell in a real day file would just burn a core. Heartbeats go out during long waits.
+- **Measured pacing:** p50 about 1 µs late, but p99 0.5–8 ms. About 165k `sendto` calls per second, each costing a few µs (multicast loopback also copies the packet to the local receiver inside the call), uses up one core.
+- **Simulated loss:** `--drop-a` and `--drop-b` drop packets on purpose, from a seeded RNG, so runs are repeatable.
+
+### Sockets: what each option does
+
+- **`IP_ADD_MEMBERSHIP`:** joins the group. The kernel (and switches, via IGMP) then deliver its traffic here.
+- **Binding to the group address** rather than `0.0.0.0` filters out other groups that use the same port.
+- **`SO_REUSEADDR`:** several receivers on one host can share a group and port.
+- **`IP_MULTICAST_TTL 1`** keeps packets on the local network. **`IP_MULTICAST_LOOP 1`** delivers to receivers on the sending host, which our testing needs.
+- **`SO_RCVBUF`:** the burst absorber.
+  - The kernel caps the request at `net.core.rmem_max` (4 MB here), then *doubles* it for its own bookkeeping, so we asked for 4 MB and were granted 8 MB.
+  - When the buffer overflows, the kernel drops datagrams and counts them in `RcvbufErrors` (`/proc/net/snmp`).
+- **`MSG_DONTWAIT`** makes a call non-blocking; **`MSG_TRUNC`** returns a datagram's real size even when the buffer was too small.
+
+### The receiver: busy-polling and A/B arbitration
+
+- **Busy-polling** (`recv` with `MSG_DONTWAIT` in a spin loop) costs one core at 100%, but no wake-up delay (measured below).
+- **Timeouts:** reading the clock costs ~25 ns, so the receiver checks its timeouts only every 64k empty polls.
+- **A/B arbitration:**
+  - The exchange sends identical packets on two multicast groups over separate network paths, and the receiver keeps the first copy of each.
+  - Implemented as a **merge**: each line holds at most one waiting packet, and the lower sequence number goes first.
+  - If that packet would open a gap while the other line has nothing waiting, the receiver gives the other line `arbitration_window_us` (50 µs) before declaring the gap.
+  - **The bug this fixed:** reading line A first made a packet A lost look lost even when B's copy was already waiting. Measured with 1% independent loss per line: **99 gaps** before the merge; **12 and 6** after, against an expected ≈ 14–15 (packets × 1% × 1%).
+  - **Window trade-off:** longer windows survive more lag between the lines; shorter ones delay processing less when a packet really is lost on both. Most real gaps need no wait at all: if both lines' next packets are past the missing number, the gap is certain at once.
+- **Known start vs late join:** with `first_seq = 1`, a lost *first* packet is a gap. Without it, the first packet seen becomes "the start" and the loss is invisible. The test `ArbitrationLosesOnlyPacketsBothLinesLost` caught exactly this: packet 0 was lost on both lines. Use `--late-join` only when joining a session already in progress.
+
+### What loss does to the book
+
+- One line with 1% loss: 3,943 gaps and 19,871 messages lost, giving **13,949 "unknown order"** anomalies and a wrong book. SYN3's best bid showed 20,998 shares where the truth is 5,851: ghost orders whose deletes never arrived.
+- The strategy's view "matched", but it matched a corrupted book. Consistency is not correctness.
+- **Production recovery:**
+  - request the missing range from the exchange's retransmission server (MoldUDP64 has one)
+  - or rebuild from the exchange's snapshot service (Nasdaq's is GLIMPSE) and replay from there
+  - meanwhile, mark the symbol's book untrustworthy so the strategy doesn't trade on it
+
+### Telling our losses from the network's
+
+- No pacing into a 64 KB receive buffer: the kernel counted **4,343** buffer overflows, and 45,100 packets sent minus 40,758 received is 4,342 (plus the end-of-session packet).
+- So `RcvbufErrors` attributes every loss to *our* socket being too slow, not to the wire. With the full 8 MB buffer the same run lost **0**.
+
+### Benchmark: what the kernel costs (two pinned cores, 64-byte packets)
+
+| Path | Round trip p50 | Round trip p99 |
+|------|----------------|----------------|
+| SPSC ring (stage 2), never enters the kernel | 0.54–0.61 µs | 0.80–0.84 µs |
+| UDP loopback, busy-poll | **3.8–3.9 µs** | 8.0–8.7 µs |
+| UDP loopback, blocking (thread sleeps in poll) | **28–29 µs** | 62–68 µs |
+
+- **Sleeping costs about 7.5×.** The kernel waking the thread costs roughly 24 µs per round trip.
+- **The kernel network stack costs about 6.5× the ring, even busy-polling.** Hence **kernel bypass:** Solarflare/OpenOnload, ef_vi, DPDK and AF_XDP have the network card write packets straight into the application's memory, with no system calls.
+- **Smaller steps inside the kernel:** `SO_BUSY_POLL`; `recvmmsg`/`sendmmsg` (several packets per system call); hardware receive timestamps (`SO_TIMESTAMPING`); interrupt coalescing settings; pinning the NIC's interrupts to a chosen core.
+
+### End-to-end results
+
+- **Real time:** 2,000,009 messages in 327,539 packets, 0 gaps, 0 kernel overflows. The final books are identical to stage 2's file-based run, and the ring hop is p50 272 ns, p90 400 ns.
+- **No pacing:** the sender reached 7.76 M messages/s (45,100 full packets), and the busy-polling receiver kept up with 0 gaps.
+
+### Problems found this stage
+
+| Problem | Found by | Fix |
+|---------|----------|-----|
+| A/B: packets one line lost but the other delivered were declared lost (99 gaps vs ~15) | Measuring against the expected loss rate | Merge by sequence, with a wait window |
+| A lost first packet was invisible | `Udp.ArbitrationLosesOnlyPacketsBothLinesLost` (off by exactly one packet's 42 messages) | `first_seq` (known start) vs `--late-join` |
+| End of session didn't reveal loss at the very end | Code review | End of session goes through the tracker too |
+| Idle timeout measured from the start of the run, not the last packet | Code review | Measure each quiet spell |
+| A flag taking no value, given last, failed argument parsing | Code review | Handle value-less flags first |
+| `EXPECT_EQ` as the body of an unbraced `if` | `-Wdangling-else` | Braces (the macro contains its own if/else) |
+
+### Common mistakes from this stage
+
+1. Treating UDP as reliable. Sequence numbers, gap counters and a recovery plan are mandatory.
+2. Datagrams bigger than the MTU (fragmentation).
+3. Starting the sender before the receiver has joined. UDP keeps nothing for later.
+4. Trusting any length field that came from the network.
+5. Blocking receives on the hot path.
+6. A/B arbitration that reads one line ahead of the other.
+7. "First packet seen = start", when the start is actually known.
+8. Not checking `RcvbufErrors`, then blaming the network for your own slow consumer.
+9. Assuming `SO_RCVBUF` gives what you asked for. It is capped by `rmem_max`, and the reported size is doubled.
+
+### Interview questions (stage 3)
+
+1. Describe MoldUDP64's header. How does a receiver detect lost packets, including loss at the end of a burst and loss of the very first packet? Why does the exchange send heartbeats?
+2. What is A/B line arbitration? Why did the first version report 99 gaps when only about 15 packets were lost on both lines, and how does the merge with a wait window fix it? What is the trade-off in choosing the window's length?
+3. Why do feeds keep packets below the MTU? What happens to a UDP datagram larger than the MTU, and where did our 1,372-byte limit come from?
+4. The receiver busy-polls with non-blocking `recv`. What did the benchmark show for busy-poll vs blocking, and vs the in-process ring? How do trading firms go faster than the kernel's UDP stack?
+5. A single line loses 1% of its packets. What happens to the order book, and how would you detect and recover in production? How did we tell our own socket buffer overflowing apart from loss on the network?

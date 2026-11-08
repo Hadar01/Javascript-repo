@@ -6,7 +6,8 @@
 add_library(hft_core
   common/cpu.cpp
   common/mapped_file.cpp
-  itch/synthetic.cpp)
+  itch/synthetic.cpp
+  net/udp_socket.cpp)
 add_library(hft::core ALIAS hft_core)
 
 # PUBLIC: we need the headers to build hft_core, and anything that links

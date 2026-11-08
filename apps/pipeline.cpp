@@ -27,43 +27,12 @@
 #include "hft/common/latency_recorder.hpp"
 #include "hft/common/mapped_file.hpp"
 #include "hft/feed/feed_handler.hpp"
+#include "hft/feed/measuring_consumer.hpp"
 #include "hft/feed/pipeline.hpp"
 
 namespace {
 
 using hft::feed::BookUpdate;
-
-// Stage 2's "strategy" only checks and measures what it receives. Stage 4
-// replaces the body with feature computation and model inference.
-struct Strategy {
-  hft::LatencyRecorder& latency;
-  std::vector<BookUpdate> latest;  // last update per symbol, reserved up front
-  std::uint64_t received = 0;
-  std::uint64_t gaps = 0;
-  std::uint64_t clock_skew = 0;
-  std::uint64_t next_seq = 0;
-
-  void operator()(const BookUpdate& u) noexcept {
-    const std::uint64_t now = hft::rdtsc();
-    // TSCs are synchronised across cores on this hardware, but if a reading
-    // ever went backwards, record that rather than a huge bogus latency.
-    if (now >= u.publish_tsc) {
-      latency.record(now - u.publish_tsc);
-    } else {
-      ++clock_skew;
-    }
-    if (u.seq != next_seq) gaps += u.seq - next_seq;  // dropped updates
-    next_seq = u.seq + 1;
-    ++received;
-    for (auto& l : latest) {
-      if (l.locate == u.locate) {
-        l = u;
-        return;
-      }
-    }
-    if (latest.size() < latest.capacity()) latest.push_back(u);
-  }
-};
 
 bool parse_int(std::string_view s, int& out) {
   const auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), out);
@@ -142,7 +111,7 @@ int main(int argc, char** argv) {
     auto handler = std::make_unique<hft::feed::FeedHandler>(cfg, *ring);
     for (const auto& s : symbols) handler->subscribe_ticker(s);
     hft::LatencyRecorder latency(std::size_t{8} << 20);
-    Strategy strategy{.latency = latency, .latest = {}};
+    hft::feed::MeasuringConsumer strategy{.latency = latency, .latest = {}};
     strategy.latest.reserve(symbols.size());
 
     const auto t0 = std::chrono::steady_clock::now();
@@ -176,10 +145,7 @@ int main(int argc, char** argv) {
         continue;
       }
       const BookUpdate truth = handler->snapshot(*loc);
-      const BookUpdate* seen = nullptr;
-      for (const auto& l : strategy.latest) {
-        if (l.locate == *loc) seen = &l;
-      }
+      const BookUpdate* seen = strategy.find(*loc);
       const bool match = seen != nullptr && hft::feed::same_levels(*seen, truth);
       std::printf("%-8s book %s   strategy's view %s\n", s.c_str(), top_of_book(truth).c_str(),
                   match ? "matches" : "differs (last update dropped)");

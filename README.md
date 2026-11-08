@@ -4,9 +4,10 @@ A C++20 market-data pipeline: it parses Nasdaq TotalView-ITCH 5.0, rebuilds a
 limit order book, and runs a small ML model on order-book features in
 microseconds. Every stage is benchmarked (median and p99).
 
-> Status: stages 0–2 of 5 done: ITCH parser, full-market order book, and a
-> two-thread pipeline joined by a lock-free SPSC ring buffer. No heap
-> allocation on the hot path (enforced by a test).
+> Status: stages 0–3 of 5 done: ITCH parser, full-market order book, a
+> two-thread pipeline joined by a lock-free SPSC ring buffer, and an
+> exchange-style UDP multicast replay (MoldUDP64, A/B line arbitration). No
+> heap allocation on the hot path (enforced by a test).
 > See [LEARNING.md](LEARNING.md) for the design notes and trade-offs.
 
 ## Architecture (target)
@@ -30,7 +31,7 @@ microseconds. Every stage is benchmarked (median and p99).
 | 0 | CMake, presets, sanitizers, GoogleTest, Google Benchmark | done |
 | 1 | ITCH 5.0 parser and limit order book | done |
 | 2 | Lock-free SPSC ring buffer, two-thread pipeline | done |
-| 3 | UDP multicast replay | — |
+| 3 | UDP multicast replay | done |
 | 4 | Order-book features, Python training, C++ inference | — |
 | 5 | End-to-end latency benchmarks and charts | — |
 
@@ -63,6 +64,17 @@ microseconds. Every stage is benchmarked (median and p99).
 - **Pipeline** (`include/hft/feed/pipeline.hpp`)
   - Two pinned, busy-polling threads, with a start handshake and a release/acquire shutdown followed by a final drain.
 
+### Stage 3 design in brief
+
+- **`replay_server`** packs ITCH messages into **MoldUDP64** packets (the format Nasdaq uses) and sends them over UDP multicast.
+  - Each packet goes out at its messages' original time, scaled by `--speed`, and stays below the MTU.
+  - It sends heartbeats when idle and an end-of-session packet at the end.
+  - It can drop packets on purpose on line A and/or B, to test the receiver.
+- **`feed_handler`**: a busy-polling network thread does `recv` → sequence check → ITCH → book → ring; the stage 2 strategy thread consumes the ring.
+- **Sequence numbers** detect lost, duplicate and overlapping packets.
+- **A/B arbitration** listens to two identical lines, merges them by sequence number, and waits briefly for the other line before declaring a gap.
+- **Kernel buffer overflows** (`RcvbufErrors`) are reported separately, so losses inside our own process aren't blamed on the network.
+
 ## Repository layout
 
 ```
@@ -73,18 +85,20 @@ include/hft/
                encoder.hpp, synthetic.hpp
   book/        order_table.hpp, order_book.hpp, market_book.hpp
   concurrency/ spsc_ring.hpp
-  feed/        book_update.hpp, feed_handler.hpp, pipeline.hpp
-src/           code off the hot path: mmap wrapper, TSC calibration, synthetic feeds
+  feed/        book_update.hpp, feed_handler.hpp, pipeline.hpp, measuring_consumer.hpp
+  net/         moldudp64.hpp, sequence_tracker.hpp, udp_socket.hpp, mold_receiver.hpp
+src/           code off the hot path: mmap wrapper, TSC calibration, synthetic feeds, sockets
 apps/          itch_stats (replay a file through the book), itch_synth (make a feed),
-               pipeline (feed thread + strategy thread over the ring)
+               pipeline (feed thread + strategy thread over the ring),
+               replay_server + feed_handler (the same over UDP multicast)
 tests/         GoogleTest, one executable per component; support/reference_book.hpp
-bench/         Google Benchmark: clock cost, parser and book throughput, SPSC ring
+bench/         Google Benchmark: clock cost, parser and book throughput, SPSC ring, UDP round trip
 cmake/        Sanitizers, CompilerWarnings, Dependencies
 scripts/      data download
 ```
 
-The hot path is header-only so it can be inlined across components. Later
-stages add the UDP replay server and `python/`.
+The hot path is header-only so it can be inlined across components. Stage 4
+adds `python/` (training) and the C++ inference code.
 
 ## Building
 
@@ -110,12 +124,13 @@ Or step by step: `cmake --preset release`, `cmake --build --preset release`,
 
 To use Clang, set `CXX` on the first configure: `CXX=clang++ cmake --preset release --fresh`.
 
-The 73 tests pass in all four presets, and with Clang 18. They include:
+The 95 tests pass in all four presets, and with Clang 18. They include:
 
 - a differential test of the order book against a `std::map` reference implementation
 - a test that replaces global `operator new` to prove the trading path makes zero allocations
 - a two-thread stress test of the ring, run under ThreadSanitizer
 - a deliberately broken (relaxed-ordering) ring that TSan must flag
+- real UDP sockets on this machine: the whole feed sent and received, losses chosen by the test and counted exactly, A/B arbitration recovering every packet one line lost, and multicast (skipped where the machine can't loop multicast back)
 - sanitizer canaries that commit deliberate bugs and pass only if the sanitizer catches them
 
 ## Running it
@@ -132,6 +147,20 @@ The 73 tests pass in all four presets, and with Clang 18. They include:
 ./build/release/apps/pipeline /tmp/synth.itch --symbols SYN1,SYN3,SYN5
 ./build/release/apps/pipeline /tmp/synth.itch --symbols SYN1,SYN3,SYN5 --wait   # never drop
 ```
+
+Over the network (two processes; start the receiver first, because UDP keeps nothing for later):
+
+```bash
+./build/release/apps/feed_handler --group 239.255.1.1:30001 --symbols SYN1,SYN3,SYN5 &
+./build/release/apps/replay_server /tmp/synth.itch --group 239.255.1.1:30001 --speed 1
+
+# A/B lines, each losing 1% of packets on purpose
+./build/release/apps/feed_handler --group 239.255.1.1:30001 --group-b 239.255.1.2:30002 --symbols SYN3 &
+./build/release/apps/replay_server /tmp/synth.itch --group 239.255.1.1:30001 --group-b 239.255.1.2:30002 \
+    --drop-a 0.01 --drop-b 0.01
+```
+
+`--max-payload` defaults to 1372 bytes, because this container's network MTU is 1400. On a standard 1500-MTU network, use 1472.
 
 `pipeline` reports:
 
@@ -159,6 +188,7 @@ benchmarks for clean numbers.
 taskset -c 2 ./build/release/bench/clock_bench
 taskset -c 2 ./build/release/bench/itch_bench
 ./build/release/bench/spsc_bench   # pins its own threads to cores 2 and 3
+./build/release/bench/udp_bench    # likewise
 ```
 
 For stable numbers, also set the CPU frequency governor to performance:
@@ -206,6 +236,22 @@ Full pipeline (2M messages, 3 symbols, 229,627 updates, 0 drops, 0 gaps):
 - The feed runs at 91–101 ns per message, against 60 ns single-threaded.
 - The ring hop (publish to receive) is **p50 339–369 ns, p90 470–537 ns.**
 - p99 ranged from 1.5 µs to 2 ms. That's this VM's noise: a thread that does nothing but spin was paused for more than 1 ms several times in 2 seconds.
+
+UDP between two pinned cores (round trip, 64-byte packets, median of 3 runs), against the ring:
+
+| Path | Round trip p50 | Round trip p99 |
+|------|----------------|----------------|
+| SPSC ring, never enters the kernel | 0.54–0.61 µs | 0.80–0.84 µs |
+| UDP loopback, busy-poll | 3.8–3.9 µs | 8.0–8.7 µs |
+| UDP loopback, blocking (thread sleeps) | 28–29 µs | 62–68 µs |
+
+Even busy-polling, the kernel's network stack costs about 6.5× the in-process ring, and sleeping costs another 7.5×. That's why trading systems use kernel-bypass networking.
+
+End to end over multicast (2M messages, 327,539 packets):
+
+- **Real time:** 0 gaps, and books identical to the file-based run.
+- **With 1% simulated loss on each of two lines:** A/B arbitration lost 6–12 packets, against the ≈ 14–15 predicted (packets × 1% × 1%).
+- **On one line with 1% loss:** 3,943 gaps, and the book went wrong (13,949 unknown-order anomalies).
 
 Per-stage p50/p99 latencies and the latency chart arrive in stage 5.
 

@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <span>
 #include <thread>
+#include <type_traits>
 
 #include "hft/common/cpu.hpp"
 #include "hft/feed/feed_handler.hpp"
@@ -32,19 +33,22 @@ struct PipelineConfig {
   int strategy_cpu = -1;
 };
 
-struct PipelineResult {
-  itch::FeedStats feed;
+template <typename SourceResult>
+struct PipelineRun {
+  SourceResult feed;  // whatever the source returned
   bool feed_pinned = false;
   bool strategy_pinned = false;
 };
 
-// Runs the feed on the calling thread and `consume(const BookUpdate&)` on a
-// new thread. Returns after the strategy thread has processed every update.
+// Runs `source()` on the calling thread and `consume(const BookUpdate&)` on
+// a new thread. The source drives a FeedHandler that pushes into `ring`: it
+// may read a file (run_pipeline below) or a network socket (stage 3).
+// Returns after the strategy thread has processed every update.
 // Note: pinning the calling thread is not undone afterwards.
-template <typename Consumer>
-PipelineResult run_pipeline(std::span<const std::byte> feed, FeedHandler& handler, UpdateRing& ring,
-                            Consumer& consume, const PipelineConfig& cfg = {}) {
-  PipelineResult result;
+template <typename Source, typename Consumer>
+auto run_with_strategy(Source&& source, UpdateRing& ring, Consumer& consume, const PipelineConfig& cfg = {})
+    -> PipelineRun<std::invoke_result_t<Source&>> {
+  PipelineRun<std::invoke_result_t<Source&>> result;
   // `done` gets a cache-line block of its own. The strategy thread reads it
   // every time the ring is empty. Unpadded, it sat on the same line as the
   // FeedStats the parser updates on every message, and each update dragged
@@ -80,11 +84,20 @@ PipelineResult run_pipeline(std::span<const std::byte> feed, FeedHandler& handle
 
   result.feed_pinned = pin_current_thread(cfg.feed_cpu);
   while (!ready.value.load(std::memory_order_acquire)) cpu_relax();
-  result.feed = itch::parse_binary_file(feed, handler);
+  result.feed = source();
   done.value.store(true, std::memory_order_release);
   strategy.join();
   result.strategy_pinned = strategy_pinned.load(std::memory_order_relaxed);
   return result;
+}
+
+using PipelineResult = PipelineRun<itch::FeedStats>;
+
+// The stage 2 pipeline: the source is an in-memory ITCH file.
+template <typename Consumer>
+PipelineResult run_pipeline(std::span<const std::byte> feed, FeedHandler& handler, UpdateRing& ring,
+                            Consumer& consume, const PipelineConfig& cfg = {}) {
+  return run_with_strategy([&] { return itch::parse_binary_file(feed, handler); }, ring, consume, cfg);
 }
 
 }  // namespace hft::feed
