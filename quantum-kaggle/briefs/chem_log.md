@@ -38,3 +38,28 @@ Gate slack in that file: error_1 2.4e-10 Ha, error_2 2.2e-10 Ha, E_gap 2.5e-10 H
 - No candidate beats 11.1981.
 - The remaining chemistry gain needs a new lookup compiler plus loader-aware rounding, i.e. a new table and circuits. That is GPU-scale fitting (about 4.6 A100-hours per rounding in marculera's runs) plus a GF(2) tensor-rank compiler. It is not feasible on 2 CPUs in this session.
 - The public pipeline (marculera `dfthc-compact-pipeline`, Apache-2.0) is now in `$S/dl/marculera/ds/`. It contains `tensorqrom.py`, `rmcode.py` and `quantize_rm.py`, the starting point for that work.
+
+## 4. GPU notebook `notebooks/chem_gpu_refit.ipynb` (generator: `tools/chem/make_gpu_notebook.py`)
+
+**Pipeline**
+1. Round marculera's continuous `adam_8x143x45.npz` (error_2 14.155 mHa) to 8-bit words.
+   - Script: `quantize_rm.py --open`, with her 59-stage, 60k-iteration L-BFGS schedule.
+   - Lookup-aware code ladder `CODES` (default `0:1:2-14`).
+   - Our resume patch `tools/chem/patch_quantize_resume.py` adds a checkpoint after every stage and a wall-clock budget (exit code 3 means "resume next session").
+2. `finish_rm.py`: refine the one-body rows, then `refit_al` to 19.995 mHa.
+3. qwertykeypadapple's kernel-relation search plus build.
+4. Unmodified `dfthcsos.verify` at the default salt and at one private salt. The candidate folder and `candidate_verify.json` go to `/kaggle/working`.
+
+**Datasets:** `marculera/dfthc-compact-pipeline`, `qwertykeypadapple/qcc-kernel-search-portfolio`, `sohier/verifiable-circuit-compilation-starter-kit`, plus the competition data.
+
+**Local CPU tests (mock /kaggle layout)**
+- The patched rounding runs, checkpoints, pauses with exit code 3 and resumes.
+- The kernel-search build with the shipped plans reproduces 15,347 Toffolis and ratio 10.8334 (`--salt test`).
+
+**Expected result: ratio about 10.85–11.05 at best, which probably does NOT beat 11.1981.**
+- Rounding budget: Lera's 3-14 coding ended at 19.95 mHa, and each extra coded batch costs about 3.3 mHa² of noise. So `2-14` lands at about 20.03 mHa (borderline), and `0-14` at about 20.3 mHa (likely fails).
+- The best open compiler, the kernel search, is about 3.6 % behind syed3000's closed one: about 4,300 vs 4,152 Toffolis per pass.
+
+**GPU-hours:** P100 at roughly half an A100's speed. Lera's A100 rounding took 4.6 h, so expect about 9–10 h of rounding, plus about 2 h of CPU-bound finishing and search. That is 2 sessions and about 12 GPU-hours of quota.
+
+**Better use of effort:** port syed3000's described compiler tricks into the open kernel search: helper products carried across batches via a commuting tree reorder and the π-gauge bit 7, and five-block coded plans at 195 products. That is CPU work, and it is the only lever likely to beat 11.198 on chemistry.

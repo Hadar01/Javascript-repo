@@ -36,12 +36,13 @@ code("""# DATASETS: marculera/dfthc-compact-pipeline, qwertykeypadapple/qcc-kern
 # COMPETITION: google-verifiable-quantum-circuit-compilation
 # ---- configuration ----------------------------------------------------------------------------------------------
 TABLE      = 'adam_8x143x45.npz'   # marculera's continuous table (error_2 14.155 mHa before rounding)
-CODES      = '0:1:0-14'            # lookup-aware ladder: '0:1:3-14' (Lera, proven 19.95 mHa), '0:1:2-14', '0:1:0-14' (all)
+CODES      = '0:1:2-14'            # lookup-aware ladder: '0:1:3-14' (Lera, 19.95 mHa), '0:1:2-14' (-44 T), '0:1:0-14' (-176 T, likely > 20 mHa)
 LBFGS_IT   = 60000                 # L-BFGS iterations per rounding stage (Lera's converged schedule; 30k did not pass)
 BUDGET_H   = 8.4                   # wall-clock hours for the rounding in this session, then checkpoint and stop
 KAPPA      = 2e-5
 REFIT_TARGET_MHA = 19.995          # refit_al target for error_2; keeps ~5e-6 Ha margin on the 20 mHa gate
-SEARCH_SEEDS = '0:6'               # kernel-search seeds per circuit (CPU, parallel)
+SEARCH_SEEDS = '0:4'               # kernel-search seeds per circuit, first pass (CPU, parallel)
+SEARCH_SEEDS2 = '0:2'              # second, wider pass (layouts sixes+fives, trials 1 and 6)
 SCHEDULE = ('0.9995,0.9990,0.9980,0.9970,0.9960,0.9950,0.9930,0.9910,0.9890,0.9860,0.9830,0.9800,0.9750,0.9700,'
             '0.9650,0.9600,0.9550,0.9500,0.9400,0.9300,0.9200,0.9100,0.9000,0.8800,0.8600,0.8400,0.8200,0.7950,'
             '0.7700,0.7450,0.7200,0.6900,0.6600,0.6300,0.6000,0.5700,0.5400,0.5100,0.4800,0.4500,0.4200,0.3900,'
@@ -119,10 +120,10 @@ TABLE_FINAL = WORK / 'finish' / 'refit_al.npz'
 if status == 'done' and TABLE_FINAL.exists():
     plans, cand = WORK / 'plans', WORK / 'candidate' / 'dfthcsos'
     jobs = str(max(1, os.cpu_count()))
-    for args in (['--engine', 'kernel', '--cache', 'full', '--layouts', 'sixes', '--margins', '0', '--trials', '1'],
-                 ['--engine', 'kernel', '--cache', 'full', '--layouts', 'sixes,fives,default', '--margins', '0,2', '--trials', '1,6']):
+    for seeds, args in ((SEARCH_SEEDS, ['--engine', 'kernel', '--cache', 'full', '--layouts', 'sixes', '--margins', '0', '--trials', '1']),
+                        (SEARCH_SEEDS2, ['--engine', 'kernel', '--cache', 'full', '--layouts', 'sixes,fives', '--margins', '0', '--trials', '1,6'])):
         subprocess.run([sys.executable, '-u', str(SCR / 'marculera_plan_search.py'), str(TABLE_FINAL), str(plans),
-                        '--seeds', SEARCH_SEEDS, '--jobs', jobs, *args], env=dict(os.environ, OPENBLAS_NUM_THREADS='1'))
+                        '--seeds', seeds, '--jobs', jobs, *args], env=dict(os.environ, OPENBLAS_NUM_THREADS='1'))
     if cand.exists(): shutil.rmtree(cand)
     subprocess.run([sys.executable, '-u', str(SCR / 'marculera_plan_build.py'), str(TABLE_FINAL), str(plans), str(cand)], check=True)""")
 
