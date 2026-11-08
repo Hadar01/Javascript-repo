@@ -59,7 +59,21 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Launched the Edge-Finder agent, which is restricted to legitimate public edges and reports loopholes without
     exploiting them. Output goes to briefs/E_edges.md.
 
+- 2026-11-08 06:40 UTC:
+  - The baseline notebook v1 passed all three verifiers under our own salt:
+    invsqrt 21.7479, dqi 65.2181, dfthcsos 11.1979, geometric mean 25.13668.
+  - Submitted its output (submission ref 58126741); the leaderboard score is pending.
+  - Published the explainer artifact https://claude.ai/artifact/3ZiKTAFyHht47npDcNpteR
+    (source: quantum-kaggle/explainer/index.html).
+  - The Edge-Finder agent stopped early because the usage limit (5-hour window) was hit at about 06:40 UTC
+    (resets 07:20 UTC). It needs to be resumed; its output target is briefs/E_edges.md.
+  - API notes:
+    - Submit a notebook with POST https://www.kaggle.com/api/v1/competitions.CompetitionApiService/CreateCodeSubmission
+      {competitionName, kernelOwner, kernelSlug, kernelVersion, fileName, submissionDescription}.
+    - Push a notebook with POST /api/v1/kernels/push.
+
 ## Repo layout
+- explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
 - PLAN.md: reading guide and phased plan
 - briefs/: three expert briefs plus three debate rebuttals
