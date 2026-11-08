@@ -45,6 +45,17 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - invsqrt: qubits 62→60 and rotations 41→35; expected −5–10% cost.
   - Shared tool to build: a GF(2) AND-count minimiser for the DQI multiplier, chemistry loaders and the invsqrt table.
   - Forecast with focused effort: 27.5–29.5.
+- 2026-11-08 (Edge-Finder, briefs/E_edges.md):
+  - **Top edges:**
+    - merge with a per-task specialist before 01-13;
+    - re-open invsqrt: #2 is now working on it, and #1's LLM estimates 40–45× for it;
+    - use the Apache-2.0 Gu et al. repo (github.com/andigu/uncompute: liveness profiler, DQI stage profile, QROM pruning);
+    - private-salt robustness: expected DQI cost; keep chemistry margins ≥ 1e-7 (public files sit at 2.4e-10).
+  - **Host rulings:**
+    - ANGLE_k only needs to be correct on reachable states;
+    - prizes need generators that reproduce the exact circuits;
+    - commercial AI is allowed.
+  - **Not available:** the organizers' public code holds no better circuits (Qualtran has only a 63-AND Karatsuba multiplier). A GF(4)-tower multiplier below 42 ANDs is proven impossible: μ₄(6)=14.
 - NEXT ACTION: Phase 0 of PLAN.md. Submit the public portfolio (about 25.1), build the verifier harness and the
   qubit/Toffoli profiler in Kaggle, then run the chemistry row-budget fit.
 - Constraint: running the downloaded kickmix.so locally was blocked by the permission policy. Run circuits in
