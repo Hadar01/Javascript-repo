@@ -200,18 +200,25 @@ def face_refine(P, z, t1, t2, g0, iters=300, log=print):
     def cgrads(o):
         return np.stack([o['g1'], o['g2'], -o['gE']]) * mask
 
+    tol = np.array([1e-9 * t1 ** 2, 1e-9 * t2 ** 2, 1e-9])
+
     def restore(z, max_it=30):
+        o = P.evaluate(z)
         for _ in range(max_it):
-            o = P.evaluate(z); c = cons(o)
+            c = cons(o)
             if np.all(c <= 0):
                 return z, o
-            Gm = cgrads(o)
-            # push all three to their targets slightly inside (Newton, min-norm)
-            tgt = c + np.array([1e-12, 1e-12, 1e-12])
-            act = np.array([i for i in range(3) if c[i] > -1e-9 * (t1 ** 2 if i < 2 else 1) or c[i] > 0])
-            Ga = Gm[act]
-            z = z - Ga.T @ np.linalg.solve(Ga @ Ga.T, tgt[act])
-        o = P.evaluate(z)
+            act = [i for i in range(3) if c[i] > -tol[i]]
+            tgt = np.array([c[i] + tol[i] * 1e-3 if c[i] > 0 else 0.0 for i in act])
+            Ga = cgrads(o)[act]
+            dz = Ga.T @ np.linalg.solve(Ga @ Ga.T, tgt)
+            lam = 1.0
+            while lam > 1e-4:
+                zn = z - lam * dz; on = P.evaluate(zn)
+                if np.sum(np.maximum(cons(on), 0) / np.abs(tol)) < np.sum(np.maximum(c, 0) / np.abs(tol)):
+                    break
+                lam *= 0.5
+            z, o = zn, on
         return (z, o) if np.all(cons(o) <= 0) else (None, o)
 
     z, o = restore(z)
