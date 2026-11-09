@@ -63,3 +63,32 @@ Gate slack in that file: error_1 2.4e-10 Ha, error_2 2.2e-10 Ha, E_gap 2.5e-10 H
 **GPU-hours:** P100 at roughly half an A100's speed. Lera's A100 rounding took 4.6 h, so expect about 9–10 h of rounding, plus about 2 h of CPU-bound finishing and search. That is 2 sessions and about 12 GPU-hours of quota.
 
 **Better use of effort:** port syed3000's described compiler tricks into the open kernel search: helper products carried across batches via a commuting tree reorder and the π-gauge bit 7, and five-block coded plans at 195 products. That is CPU work, and it is the only lever likely to beat 11.198 on chemistry.
+
+## 5. Porting syed3000's loader tricks into the open compiler (2026-11-09): blocker
+
+**What the public table's words actually contain**
+- Bit 7 of word j is bit 6 XOR h_j(l), where h_j is a degree-2 low-address monomial: l0l1, l0l2, l1l2, l0l3, l1l3 for j = 0..4.
+- A few late columns carry no helper: 51, 56, 60, 61, 65, 66, 68–71, 73, 74.
+- So after `b7 ^= b6`, the incoming words already hold 5 of the 11 nonlinear low monomials.
+- This explains syed3000's per-circuit cost. Toffolis = products + 69 (high cache) + 11 − (helpers that persist from batch k−1 to batch k).
+  - Products are 217, 216 ×3, then 195 ×11, i.e. 3,009 per pass.
+  - Every coded circuit, including the late ones (271–274 Toffolis), sits at 195 products.
+
+**Code written**
+- `tools/chem/helper_build.py`: a modified tensorqrom builder.
+  - Persisting helpers are used as low-cache qubits.
+  - Changed helpers are corrected with h_in XOR h_out from the cache, which is correct both forward and in reverse.
+  - Words with no helper lend their cleared top bit as scratch.
+  - Also has `fill_dontcare` (fills the 12 unused rows of the last block) and `--only/--base` to mix single circuits with the public ones.
+- `tools/chem/dc_search.py`: qwertykeypadapple's kernel search on the filled deltas.
+
+**Verified hybrid** (our circuits 4 and 13, the public file for the rest; submission.npz byte-identical to the public one), `score_local.py --salt agentC-helper`:
+`dfthcsos  PASS cost 3.00137e+08 ratio 11.1802 (15s)`, lambda_eff 46.89112671293601, toffoli_count 14990.0, num_qubits 427.
+- Circuits 4 and 13 cost 276 / 280 Toffolis (201 products) against syed3000's 270 / 274 (195 products).
+- The helper carry works: our cache matches theirs at 75–79. The whole gap is products.
+
+**Blocker: products**
+- On these exact words the open kernel search gives 223 uncoded and 201 coded, against syed3000's 216 and 195. The don't-care fill did not help (201 → 201).
+- No single circuit of ours beats the matching public one, so a per-circuit hybrid cannot win.
+- Headroom exists in principle. Each Toffoli adds s ⊗ (rank-2 matrix) to the low(15) × high(76) × output(35) GF(2) tensor. Dimension counting gives a lower bound of about 168 terms for coded circuits and about 187 for uncoded, against 195 / 216 today. Reaching it needs a GF(2) tensor-decomposition search (flip-graph style). That is research, not a port.
+- Flip-graph feasibility on the current plans looks poor. The 401 rank-1 features share no b factor and almost no a factor (26 shares), so a Kauers–Moosbauer walk has very few reductions available.

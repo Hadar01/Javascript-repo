@@ -19,7 +19,7 @@ The plan is a list of steps:
     ('target', t_index, [(l1, l2), ...], s)      target qubit = XOR of products + XOR of wires in s
 masks are ints over wire ids (bit w = include wire w); wire 0 is the constant 1, wires 1..n are inputs.
 """
-import random
+import random, itertools
 
 
 class Span:
@@ -125,8 +125,14 @@ def decompose(span, t, npts, k, rng, tries):
         acc = s[0]
         for (fv, _), (gv, _) in prods: acc ^= fv & gv
         if acc != t: continue
-        prods = [pr for pr in prods if pr[1][0] != 0 and pr[0][0] != 0]
-        return s[1], [(fe, ge) for (_, fe), (_, ge) in prods]
+        full = (1 << npts) - 1
+        se = s[1]; keep = []
+        for (fv, fe), (gv, ge) in prods:
+            if fv == 0 or gv == 0 or fv == gv ^ full: continue
+            if fv == gv or gv == full: se ^= fe; continue
+            if fv == full: se ^= ge; continue
+            keep.append((fe, ge))
+        return se, keep
     return None
 
 
@@ -476,3 +482,162 @@ def reverse_fresh(em, result, targets, n, seed=1, tries=12, kmax=80, nbase=None)
         b.pop_condition(); b.free(bit)
     for w in sorted([k for k in em.helpers if k in base], reverse=True):
         if not erase_helper(w): raise RuntimeError('cannot erase base helper %d' % w)
+
+
+# ---------------------------------------------------------------------------------------------------
+# Context API for field-by-field table construction inside a larger circuit.
+
+class XagContext:
+    """Tracks live wires whose values are known functions of an n-bit address, inside a kickmix builder.
+
+    ctx = XagContext(b, km, address_qubits)
+    ctx.build(funcs, qubits, budget)  : make qubits[i] hold funcs[i] (qubits must be |0>); helpers are freed
+    ctx.erase(qubits)                 : X-measure them back to |0> with Clifford-only phase repair
+    ctx.forget(qubits) / ctx.know(qubits, funcs): qubits being modified by arithmetic / restored
+    Every Toffoli is an AND of two XORs of live wires.  Returns of build(): number of ANDs emitted."""
+    def __init__(self, b, km, address_qubits, seed=0, tries=12, kmax=96):
+        self.b, self.km = b, km
+        self.n = len(address_qubits); self.npts = 1 << self.n; self.full = (1 << self.npts) - 1
+        self.rng = random.Random(seed); self.tries = tries; self.kmax = kmax
+        self.wfunc = {0: self.full}; self.wq = {}; self.nxt = 1
+        for j, q in enumerate(address_qubits):
+            v = 0
+            for p in range(self.npts):
+                if (p >> j) & 1: v |= 1 << p
+            self._add_wire(v, q)
+        self.ands = 0
+
+    def _add_wire(self, func, q):
+        w = self.nxt; self.nxt += 1
+        self.wfunc[w] = func; self.wq[w] = q
+        return w
+
+    def _span(self, exclude=()):
+        sp = Span()
+        for w, f in self.wfunc.items():
+            if w not in exclude: sp.add(f, 1 << w)
+        return sp
+
+    def _em(self):
+        em = Emitter.__new__(Emitter); em.b, em.km = self.b, self.km
+        em.q = dict(self.wq); em.tq = []; em.helpers = {}
+        return em
+
+    def _decompose_any(self, func, exclude=()):
+        sp = self._span(exclude)
+        for k in range(0, self.kmax + 1):
+            res = decompose(sp, func, self.npts, k, self.rng, 1 if k == 0 else self.tries)
+            if res is not None: return res
+        return None
+
+    def _phase_fix(self, s, prods):
+        em = self._em()
+        for fe, ge in prods:
+            (pf, pg), undo = em._realize([fe, ge]); self.b.cz(pf, pg); em._undo(undo)
+        em._phase_linear(s)
+
+    def _erase_wire(self, w):
+        res = self._decompose_any(self.wfunc[w], exclude=(w,))
+        if res is None: raise RuntimeError('cannot erase wire')
+        s, prods = res
+        q = self.wq[w]; bit = self.b.alloc_bits(1)[0]
+        self.b.hmr(q, bit)
+        del self.wfunc[w]; del self.wq[w]
+        self.b.push_condition(bit); self._phase_fix(s, prods); self.b.pop_condition()
+        self.b.free(bit)
+        return q
+
+    def build(self, funcs, qubits, budget=25, base=True, keep_from=2, base_drop=None):
+        b, km = self.b, self.km
+        start_ands = self.ands
+        helpers_live = []          # wires of helpers in creation order
+        basew = []
+        def new_product(fe, ge):
+            em = self._em()
+            fv = wire_value(self.wfunc, fe); gv = wire_value(self.wfunc, ge)
+            (pf, pg), undo = em._realize([fe, ge])
+            h = b.alloc_qubits(1)[0]
+            b.init_and(pf, pg, h); em._undo(undo); self.ands += 1
+            return self._add_wire(fv & gv, h)
+        if base:
+            memo = {}
+            inw = list(range(1, self.n + 1))
+            half = self.n // 2
+            for grp in (inw[:half], inw[half:]):
+                for d in range(2, len(grp) + 1):
+                    for c in itertools.combinations(grp, d):
+                        pe = (1 << c[0]) if d == 2 else (1 << memo[c[:-1]])
+                        memo[c] = new_product(pe, 1 << c[-1]); basew.append(memo[c])
+        order = sorted(range(len(funcs)), key=lambda i: anf_weight(funcs[i], self.n))
+        tw = {}
+        for i in order:
+            t = funcs[i]
+            res = self._decompose_any(t)
+            if res is None: raise RuntimeError('no decomposition')
+            s, prods = res
+            q = qubits[i]
+            em = self._em()
+            if len(prods) >= keep_from:
+                pe = 0
+                for fe, ge in prods:
+                    w = new_product(fe, ge); pe ^= 1 << w; helpers_live.append(w)
+                em = self._em(); em._xor_into(s ^ pe, q)
+            else:
+                for fe, ge in prods:
+                    (pf, pg), undo = em._realize([fe, ge]); b.ccx(pf, pg, q); em._undo(undo); self.ands += 1
+                em._xor_into(s, q)
+            tw[i] = self._add_wire(t, q)
+            if base_drop is not None and len(tw) == base_drop and basew:
+                for w in reversed(basew):
+                    qh = self._erase_wire(w); b.free(km.array([qh]))
+                basew = []
+            # budget: erase oldest helpers whose factors are expressible, else by decomposition
+            while len(helpers_live) > budget:
+                w = helpers_live.pop(0)
+                qh = self._erase_wire(w); b.free(km.array([qh]))
+        for w in reversed(helpers_live):
+            qh = self._erase_wire(w); b.free(km.array([qh]))
+        for w in reversed(basew):
+            qh = self._erase_wire(w); b.free(km.array([qh]))
+        return self.ands - start_ands
+
+    def make_base(self):
+        b, km = self.b, self.km; memo = {}; basew = []
+        inw = list(range(1, self.n + 1)); half = self.n // 2
+        for grp in (inw[:half], inw[half:]):
+            for d in range(2, len(grp) + 1):
+                for c in itertools.combinations(grp, d):
+                    pe = (1 << c[0]) if d == 2 else (1 << memo[c[:-1]])
+                    em = self._em(); fe, ge = pe, 1 << c[-1]
+                    fv = wire_value(self.wfunc, fe); gv = wire_value(self.wfunc, ge)
+                    (pf, pg), undo = em._realize([fe, ge]); h = b.alloc_qubits(1)[0]
+                    b.init_and(pf, pg, h); em._undo(undo); self.ands += 1
+                    memo[c] = self._add_wire(fv & gv, h); basew.append(memo[c])
+        return basew
+
+    def drop(self, wires):
+        for w in reversed(wires):
+            qh = self._erase_wire(w); self.b.free(self.km.array([qh]))
+
+    def erase(self, qubits):
+        qs = list(qubits)
+        ws = [w for w, q in self.wq.items() if any(q == qq for qq in qs)]
+        for w in sorted(ws, reverse=True):
+            self._erase_wire(w)
+
+    def forget(self, qubits):
+        for w in [w for w, q in self.wq.items() if any(q == qq for qq in qubits)]:
+            del self.wfunc[w]; del self.wq[w]
+
+    def know(self, qubits, funcs):
+        for q, f in zip(qubits, funcs): self._add_wire(f, q)
+
+
+def anf_weight(v, n):
+    N = 1 << n
+    tt = [(v >> i) & 1 for i in range(N)]
+    for i in range(n):
+        s = 1 << i
+        for j in range(N):
+            if j & s: tt[j] ^= tt[j ^ s]
+    return sum(tt)
