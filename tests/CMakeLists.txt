@@ -1,0 +1,42 @@
+include(GoogleTest)
+
+# Shared test helpers (the reference book). INTERFACE: only an include path.
+# Benchmarks use it too, for the naive baseline.
+add_library(hft_testsupport INTERFACE)
+add_library(hft::testsupport ALIAS hft_testsupport)
+target_include_directories(hft_testsupport INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/support)
+
+# hft_add_test(<name> SOURCES <file>... [LIBS <target>...])
+#
+# One test executable per component, so a failure or a sanitizer report points
+# straight at the component that caused it.
+function(hft_add_test name)
+  cmake_parse_arguments(ARG "" "" "SOURCES;LIBS" ${ARGN})
+  add_executable(${name} ${ARG_SOURCES})
+  target_link_libraries(${name} PRIVATE ${ARG_LIBS} hft::warnings GTest::gtest_main)
+  # PRE_TEST: ask the binary for its test list when ctest runs, not as a build
+  # step. Otherwise a binary that can't start (e.g. a sanitizer runtime
+  # problem) fails the build with a confusing error instead of failing a test.
+  gtest_discover_tests(${name} DISCOVERY_MODE PRE_TEST)
+endfunction()
+
+hft_add_test(sanitizer_canary_test SOURCES sanitizer_canary_test.cpp)
+hft_add_test(wire_test         SOURCES wire_test.cpp         LIBS hft::core)
+hft_add_test(parser_test       SOURCES parser_test.cpp       LIBS hft::core)
+hft_add_test(order_table_test  SOURCES order_table_test.cpp  LIBS hft::core)
+hft_add_test(order_book_test   SOURCES order_book_test.cpp   LIBS hft::core)
+hft_add_test(market_book_test  SOURCES market_book_test.cpp  LIBS hft::core hft::testsupport)
+hft_add_test(mapped_file_test  SOURCES mapped_file_test.cpp  LIBS hft::core)
+hft_add_test(spsc_ring_test    SOURCES spsc_ring_test.cpp    LIBS hft::core)
+hft_add_test(feed_handler_test SOURCES feed_handler_test.cpp LIBS hft::core)
+hft_add_test(pipeline_test     SOURCES pipeline_test.cpp     LIBS hft::core)
+hft_add_test(moldudp64_test        SOURCES moldudp64_test.cpp        LIBS hft::core)
+hft_add_test(sequence_tracker_test SOURCES sequence_tracker_test.cpp LIBS hft::core)
+hft_add_test(udp_test              SOURCES udp_test.cpp              LIBS hft::core)
+hft_add_test(features_test         SOURCES features_test.cpp         LIBS hft::core)
+hft_add_test(mlp_test              SOURCES mlp_test.cpp              LIBS hft::core)
+# The trained model and the golden predictions python/train.py exported.
+target_compile_definitions(mlp_test PRIVATE HFT_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
+# Its own executable: it replaces the global operator new.
+hft_add_test(no_alloc_test     SOURCES no_alloc_test.cpp     LIBS hft::core)
+target_compile_definitions(no_alloc_test PRIVATE HFT_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")

@@ -1,0 +1,15 @@
+# Build trees (one per CMake preset)
+build/
+
+# Market data and generated training files (multi-GB). The leading / anchors
+# the pattern to the repository root: tests/data/ must stay tracked.
+/data/
+
+# Editor / tooling
+.cache/
+compile_commands.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
