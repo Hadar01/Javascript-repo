@@ -242,3 +242,40 @@ The public decode is about 169 ANDs. Our unbounded result is below that, and bud
 - SAT window resynthesis: pycryptosat is not installed.
 - Bilinear-map input for the DQI multiplier.
 - Qubit-aware integration into `gen2.py`. The lookup-time live set is now 57 targets + 22 base + budget, so a progressive, field-by-field construction is the next step for the invsqrt qubit peak.
+
+---
+## Step 4: XAG lookup wired into the generator (gen3.py): passes, but worse; blocker
+
+**What gen3 does**
+- Uses `xag.XagContext`, which builds, erases, forgets and re-knows table fields inside the circuit.
+- Builds H field by field, phases it, and erases it once the rest of the table is live.
+- Then builds K2, C, r0 and L0, and erases K2 after the R rows, while C and L0 are still pure table values.
+- Rebuilds K2 for the reverse R rows.
+- Final erase: re-creates the base monomials, then measures everything out with Clifford-only fix-ups.
+- The whole circuit **PASSES** the official verifier (quick check, all x), so the XAG machinery is correct in situ.
+
+**Results**
+
+| file | budget | Q | Toffolis (XAG ANDs) | C | cost | ratio |
+|---|---|---|---|---|---|---|
+| inv_a3.kmb | 25 | 135 | 1479 (314) | 1791.9 | 241,907 | 8.58 |
+| inv_a3 variant | 8 | 119 | 1559 (394) | — | — | — |
+
+**AND split** at budget 25: H 61 (base 22 + 39), rest 192, K2 rebuild 39, final base 22.
+
+Building fields separately loses the cross-field reuse that gives 142 for the whole table, and pays the 22-AND base each time.
+
+**Blocker: qubits**
+- A whole-table XAG needs, at build time: x + flags (27) + all 57 outputs + 22 base helpers + budget ≥ 106 qubits.
+- That is above the 94-qubit rows peak.
+- Field by field it is still 119–135, because the base plus budget helpers (≥ 30 qubits) coexist with the live fields.
+- At our exchange rate (about 19 Toffoli-equivalents per qubit), 30 helper qubits are worth about 570, against about 100 ANDs saved. Kickmix's unary lookup (8 ancillas) wins in this architecture.
+
+**What would change this**
+- The XAG must run where the table is not at the qubit peak.
+- Or the table must shrink to about 40 live outputs, as in the public circuit.
+- Or the synthesis must start with no base: products of linear forms only, with output bits reused as factors as soon as they exist.
+
+All three need the overall qubit architecture redone, and the deciding factor is still the carry-light reverse adders.
+
+**Best own circuit remains `$S/cand/inv_a2.kmb`** (94 Q, ratio 12.40).
