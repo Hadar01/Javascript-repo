@@ -113,6 +113,29 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Chemistry margins: a fresh private salt cannot change error_1, error_2, Λ or E_gap.
   - Next for chemistry: a lookup-cost-aware new table on a Kaggle GPU (notebooks/chem_gpu_refit.ipynb).
 
+- 2026-11-09 03:30 UTC:
+  - We had dropped to rank 487 of 2,667 (more teams copying the public set).
+  - Thresholds now:
+
+    | Rank | Score |
+    |---|---|
+    | 1 | 29.301 |
+    | 26 | 26.354 |
+    | 100 | 25.206 |
+
+  - The public dataset is now v98. Its dqi has 2 phase errors under our salt (64.68×), so the older v95 dqi with zero
+    errors (65.22×) is better. The chemistry file changed but scores the same.
+  - Submitted the v95 set as a direct file upload (ref 58149714). Local score 25.148.
+  - Direct upload flow:
+    1. POST competitions.CompetitionApiService/StartSubmissionUpload, which returns createUrl and token.
+    2. PUT the zip to createUrl. The file MUST be named submission.zip.
+    3. POST CreateSubmission with {competitionName, blobFileTokens, submissionDescription}.
+  - invsqrt track blocker: our generator is at 12.40 (94 qubits). The public 62-qubit architecture is decoded in
+    briefs/invsqrt_architecture.md. Reaching it needs a whole-table XAG lookup synthesizer, a shared tool
+    (tools/xag/, in progress), plus carry-light reverse adders.
+  - Chemistry: the GPU notebook is held (expected to score about 10.9, below public). The CPU loader-trick port is in progress.
+  - Agents hit the usage limit at about 21:00 UTC Nov 8 and were resumed after it reset.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)

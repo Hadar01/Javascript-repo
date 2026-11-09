@@ -168,3 +168,34 @@ The rest (to 62 qubits at C ~1540) needs the public's remaining tricks. Its live
 Semantic lifting of the public circuit with our bit-packed simulator (`kmx_analyze.py`). For each live qubit at each checkpoint, test over all 3.1M x whether its value equals a bit of a known quantity: x_n, the address, table fields, R, partial sums of the Q rows, the flags.
 
 This turns the opaque stream into an architecture diagram in hours rather than days. After that, we can re-implement it readably in `gen2.py`.
+
+---
+## Step 3 attempt (implementing the decoded tricks): hard blocker, nothing built
+
+**Step 1, carry-light row adders.** The forward half works on paper:
+- A ripple whose carries are X-measured right after use, with the kick stored in a classical bit. This needs 2 ancillas and n−1 Toffolis.
+- The complement-trick subtraction ~(~s+v) reproduces the forward carries bit for bit (proof in my notes: d_i = [s_<i < v_<i + cin] = c_i). So the reverse can repay the forward kicks for free.
+
+The reverse is the blocker. Its own carries must be erased unitarily, or every measurement kick needs yet another recomputation (an infinite regress). The options:
+
+| reverse adder | ancillas | Toffolis | problem |
+|---|---|---|---|
+| Gidney top-down | n | n | defeats the purpose |
+| Cuccaro in place | 1 | 2n | fails where the row operand is shorter than the target: our LSB-aligned rows have n−m = 3..16 bits of pure carry propagation with no operand qubit to hold the carry, so the high part again needs n−m ancillas or an O(k)-Toffoli dirty-ancilla incrementer |
+| block-Gidney with comparator-erased boundary carries | about n/2 | 1.5n | about break-even at our qubit price |
+
+Two ways out, both deep:
+- **(a) Bias-grown narrow accumulator** T = 2^b − Σ (n−m ≤ 2 for every row), with the K0 table value phased separately. Cost about +22 rotations. But with kickmix's unary lookup (all 57 output bits plus 8 ancillas written at once), the lookup itself then becomes the 92-qubit peak.
+  - That needs a split or progressive lookup, which needs the cheap XAG lookup (blocked earlier).
+  - Or it needs two lookups, at +280 Toffolis.
+- **(b) Carry-save pending-carry flushing** in the in-place L register. This is research-level; the redundancy in the pending digit makes the absorb step non-injective without an extra qubit per stage.
+
+**Steps 2, 4, 5** (rebuild K2, flags in x, free the address) each depend on either the cheap XAG lookup (2, 5) or on fixing the low-δ rows corrupted by stored flags (4).
+
+**Step 3, y at 26 bits:** the earlier sweep found it infeasible with our rounding scheme (fy 26–27 infeasible for f1 17–19). The public circuit reaches it with a different scheme that we have not yet decoded.
+
+**Conclusion.** Reaching ratio ≥ 21 needs two multi-day components:
+1. A whole-table XAG synthesizer of about 3 ANDs per output bit. That enables progressive and partial lookups, rebuilding K2, and the address recovery.
+2. Carry-light reverse adders, with the public's reverse scheme decoded at gate level. That scheme uses nested conditional repayment blocks keyed on the stored carry bits, plus conditional duplicate branches.
+
+Our generator remains at ratio 12.40 (`$S/cand/inv_a2.kmb`).
