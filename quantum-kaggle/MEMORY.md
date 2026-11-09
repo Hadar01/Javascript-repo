@@ -188,6 +188,23 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   | 26.35 | −13.05% | 75.01× |
   | 29.30 | −36.76% | 103.13× |
 
+- 2026-11-09 supervisor priority 1 RESOLVED (measured on public v100 invsqrt, sha 034c7c2a…):
+  - The rotation merge does not pay. Each merged weight needs its own high-pass bit kept live from op ~8431 to
+    ~16276, across several 62-qubit peaks.
+    - No qubit is idle over that interval.
+    - The bits cannot be recovered as an XOR of live qubits.
+    - Neither pass can be moved.
+  - Result: m merged weights cost m extra qubits and save m−1 rotations (7.19 Tof-eq each), against 24.8 Tof-eq
+    per qubit:
+
+    | m | Cost change |
+    |---|---|
+    | 1 | +1.6% |
+    | 8 | +9.1…11.5% |
+
+  - Untested: recovering those bits non-linearly at the low pass.
+  - Tool: tools/invsqrt/merge_probe.py. Details: briefs/invsqrt_log.md.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)

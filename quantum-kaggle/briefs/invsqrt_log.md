@@ -279,3 +279,53 @@ Building fields separately loses the cross-field reuse that gives 142 for the wh
 All three need the overall qubit architecture redone, and the deciding factor is still the carry-light reverse adders.
 
 **Best own circuit remains `$S/cand/inv_a2.kmb`** (94 Q, ratio 12.40).
+
+---
+## Rotation-merge re-check: exact costs (supervisor review), 2026-11-09, public v100
+
+**Input file:** `$S/cand/pub3/invsqrt.kmb`, sha 034c7c2a…, 36,477 ops.
+
+**Quick check (all x, 1 shot):** PASS. 62 qubits, mean Toffolis 1242.74, T 1, 41 rotations, ε 2.434e-13, C 1537.83, cost 95,345.6, ratio 21.7816.
+
+**Tools:** `tools/invsqrt/merge_probe.py` (exact over all 3,133,452 x) and `decode.py` + `/tmp/lin_h.py` (8,192 sampled x).
+
+### What was measured
+1. **Rotations.**
+   - High pass: 15 rotations, at ops 8373–8677, with half-turn weights 2^-17 … 2^-3, plus one T.
+   - Low pass: 26 rotations, at ops 16138–16331, with weights 2^-35 … 2^-10.
+   - They overlap on 8 weights, 2^-17 … 2^-10.
+
+   | weight | high-pass 1s | low-pass 1s | both 1 |
+   |---|---|---|---|
+   | 2^-17 | 995,341 | 1,129,688 | 283,499 |
+   | 2^-14 | 1,550,464 | 19,683 | 5,686 |
+   | 2^-10 | 2,386,871 | 114 | 44 |
+
+   Both bits are 1 at the same weight for some x at every overlap weight. So a merge needs a real add with a carry, not just an XOR.
+2. **Storage interval.** A merged weight needs the high-pass bit h_w (a flag-muxed bit of the table high word) to survive from its high-pass op (8373–8431) to the low pass (16276–16331).
+   - Within that interval the live count reaches **62** at ops 8373–8378, 8760, 9008, 14239–14241, 14433, 15102, 15526, 16008 and more.
+   - **No qubit is zero throughout**, and **every one of the 62 qubits is acted on by some gate** inside [8433, 16276].
+   - So each carried bit adds exactly +1 to the peak: **m merged weights → Q = 62 + m**.
+3. **Recompute instead of store.**
+   - At the low pass, the address bits are not available: x17–x20 are zeroed and reused, and no pure table wire is live (classification "T" count 0 at op 16250).
+   - None of the 8 h_w is in the GF(2)-linear span of the live qubits at any checkpoint from 10500 to 16275. Recovering them would need a non-linear recomputation from arithmetic registers; we did not find a cheap one.
+   - Moving the high pass later fails because H is unavailable after op ~10750 until the reverse rows have erased Y_low. Moving the low pass earlier fails because Y_low exists only after the forward rows (~15700).
+4. **Rotation saving.** Merging m contiguous weights with a streaming carry saves m − 1 rotations: the carry-out at the top weight needs its own rotation. Each rotation is 28.765 T = 7.19 Toffoli-equivalents. ε rises slightly with fewer rotations, which is included below.
+
+### Exact cost table
+
+v100 baseline: 62 Q, C 1537.83, cost 95,345.6. Extra Toffolis per merged weight (adder carry, carry erase, deferred fix-up of the stored bit) are bracketed at 0 and 4.
+
+| m merged | Q | rotations | ΔToffolis | C | cost | ratio | vs baseline |
+|---|---|---|---|---|---|---|---|
+| 1 | 63 | 41 | 0 | 1537.8 | 96,883 | 21.44 | +1.61% |
+| 2 | 64 | 40 | 0–8 | 1530.4–1538.4 | 97,948–98,460 | 21.20–21.09 | +2.7…+3.3% |
+| 4 | 66 | 38 | 0–16 | 1515.7–1531.7 | 100,035–101,091 | 20.76–20.54 | +4.9…+6.0% |
+| 8 | 70 | 34 | 0–32 | 1486.2–1518.2 | 104,035–106,275 | 19.96–19.54 | +9.1…+11.5% |
+
+The supervisor's scenario (63 Q with −42 C → 94,237, ratio 22.04) would need all 8 bits held in 1 extra qubit. Because the bits must survive several 62-live points with no idle or zero qubit and are not linearly recoverable, the storage cost we measured is 1 qubit per bit.
+
+### Conclusion
+With these merge layouts (store-and-merge, recompute, move either pass), no gain was found. Every tested m increases cost, by 1.6% to 11.5%. Not built.
+
+A gain would need a non-linear recovery of the h_w window from the live state at the low pass costing fewer than about 7·(m−1) − 24.8·k Toffoli-equivalents with k extra qubits. We did not find or test such a recovery beyond the linear check.
