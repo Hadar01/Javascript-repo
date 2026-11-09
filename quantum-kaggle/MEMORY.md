@@ -153,6 +153,7 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - dqi: 65.2264 with 0 errors under one salt, 64.93 with 1 value error under another (salt-dependent).
       Keep the v95 dqi.
   - Submitted mix1 (ref 58163722): v100 invsqrt + v95 dqi + v100 chem, local score 25.1498.
+    It scored **25.14983**: **rank 306 of 2,693**. This is our current best.
   - Lesson: the public DQI files now trade rare failures for Toffolis. Always score candidate DQI files under
     two or more salts before using them.
 
