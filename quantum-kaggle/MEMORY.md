@@ -157,6 +157,8 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Lesson: the public DQI files now trade rare failures for Toffolis. Always score candidate DQI files under
     two or more salts before using them.
 
+- 2026-11-09: Supervisor progress report written as a Claude Doc: https://claude.ai/artifact/Yc3FjAKQLXEfAq75cbTu6D
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
