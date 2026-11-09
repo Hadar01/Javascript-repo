@@ -205,6 +205,17 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Untested: recovering those bits non-linearly at the low pass.
   - Tool: tools/invsqrt/merge_probe.py. Details: briefs/invsqrt_log.md.
 
+- 2026-11-09 invsqrt delay line (public v100), measured:
+  - 93 Toffolis (89 CSWAP + 4 CCX), all executed every shot, on the 62-qubit peak; 0 of 93 removable.
+  - Tested rewrites, none built:
+    - cap the shift at 7: net loss, since 63 inputs need phase fixes;
+    - classical control: not applicable;
+    - merge with an adjacent network: none adjacent;
+    - extra buffers: each costs a qubit;
+    - better encoding: slack at most about 3 Toffolis (+0.2%), no construction found.
+  - Conclusion: the remaining invsqrt levers on the public file are small. Wait for the DQI profile before assigning
+    the next research.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)

@@ -329,3 +329,38 @@ The supervisor's scenario (63 Q with −42 C → 94,237, ratio 22.04) would need
 With these merge layouts (store-and-merge, recompute, move either pass), no gain was found. Every tested m increases cost, by 1.6% to 11.5%. Not built.
 
 A gain would need a non-linear recovery of the h_w window from the live state at the low pass costing fewer than about 7·(m−1) − 24.8·k Toffoli-equivalents with k extra qubits. We did not find or test such a recovery beyond the linear check.
+
+---
+## Low-pass delay line: exact measurement and rewrites tested (public v100, sha 034c7c2a…), 2026-11-09
+
+### Measured (exact, all x)
+- **Op range:** 16123–16335 (kmx line index), from the flag setup `CCX q23 q3 q21` to the last low-pass Z_POW. Then come the HMR clean-up and the Clifford fix-ups (Z/CZ only).
+- **Cost:** **89 CSWAP + 4 CCX = 93 Toffolis**, static = mean. There is no PUSH_CONDITION in the range, so every Toffoli executes on every shot. That is 3.58 per rotation over 26 rotations.
+
+**Stages** (control qubits per streamed bit):
+
+| stage | controlled by | buffers | cost |
+|---|---|---|---|
+| shift by 1 | q18 | q0, a vacated x bit | 26 CSWAP + 1 CCX = 27 |
+| shift by 2 | q27 | q2/q3 alternating, vacated x bits | 27 |
+| combined shift 4/8 (shift ∈ {0,4,8}, since a ≤ 10) | q21, q23, and q21⊕q23 via CX conjugation | bank q50/q40/q41/q6 and bank q8–q11 | 26 + 12 = 38 (1.46 per bit) |
+| start | `CCX q54 q18 q28` | — | 1 |
+
+- **Drain:** the last 7 rotations (half-turn weights 2^-16 … 2^-10) take no new source and cost ≈ 25 Toffolis. They serve only large shifts: the 2^-10 rotation is 1 for 114 inputs, 2^-11 for 373, 2^-12 for 1,294.
+- **Live qubits:** 57–62 inside the range. **The line sits on the 62-qubit peak**: 62 live at ops 16153–16175 and onwards.
+- **Domain-aware scan:** over all x, 0 of the 93 Toffolis are deletable or downgradable (never fires, equals one control, SWAP-equivalent).
+
+### Rewrites tested
+
+| rewrite | exact effect | verdict |
+|---|---|---|
+| A. Cap the shift at 7 (drop the 8 stage) | Saves ≤ 12 CSWAPs (the q23 bank), plus ≈ 3 drain steps: ≤ ~20 Toffolis (≈ −1.3% of C). But 63 inputs (x < 64, shift 8–10) then get the wrong phase. The correction is a phase function on 63 points: in the parity basis, up to 63 rotations (7.19 Tof-eq each), or another shift network. | net loss in the forms tested |
+| B. Shifts conditioned on classical bits | No classical copy of the shift flags exists. They are quantum functions of x, and measuring them would destroy x. | not applicable |
+| C. Merge with an adjacent CSWAP network | The nearest networks are the high-pass mux (ops 8373–8687) and the (un)normalisation at the circuit ends. None is adjacent. | no merge found |
+| D. More borrowed buffers | The vacated x bits are already used (q0, q2, q3, q6, q8–q11). A new scratch buffer adds a qubit at the 62 peak (+24.8 Tof-eq) for at most a few Toffolis. | net loss |
+| E. Stage-encoding bound | Binary-stage streaming over 11 shift values needs about log2(11) = 3.46 swaps per streamed bit; v100 uses 3.58. The slack is about 0.12 × 26 ≈ 3 Toffolis (≈ 0.2% of C, cost about 95,160, ratio about 21.82) under this structure. | no construction found; not built |
+
+### Conclusion
+The rewrites tested (A–E) found no gain that beats cost 95,345.6. Nothing was built.
+
+**Correction to my earlier estimate (step 2, "≈100 Toffolis, ≈ −1%"):** the line is 93 Toffolis, and nearly all of it is the information cost of muxing 11 shift values, done with vacated-bit buffers.
