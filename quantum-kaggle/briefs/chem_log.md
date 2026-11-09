@@ -92,3 +92,21 @@ Gate slack in that file: error_1 2.4e-10 Ha, error_2 2.2e-10 Ha, E_gap 2.5e-10 H
 - No single circuit of ours beats the matching public one, so a per-circuit hybrid cannot win.
 - Headroom exists in principle. Each Toffoli adds s ⊗ (rank-2 matrix) to the low(15) × high(76) × output(35) GF(2) tensor. Dimension counting gives a lower bound of about 168 terms for coded circuits and about 187 for uncoded, against 195 / 216 today. Reaching it needs a GF(2) tensor-decomposition search (flip-graph style). That is research, not a port.
 - Flip-graph feasibility on the current plans looks poor. The 401 rank-1 features share no b factor and almost no a factor (26 shares), so a Kauers–Moosbauer walk has very few reductions available.
+
+## 6. Agent A's XAG synthesizer on a loader (2026-11-09): does not win
+
+- Bench: `tools/chem/xag_loader_bench.py` imports `tools/xag/xag.py` unmodified.
+- Inputs:
+  - Targets: circuit 4 of the public table, i.e. the 35 signed-gauge output bits of the delta, extended to all 2048 addresses through their ANF over high monomials < 77.
+  - Helpers: the 69 high monomials, 6 low monomials and the 5 carried top-bit helpers (80 helper ANDs; the carried 5 are counted as free).
+
+| run | products | wires |
+|---|---|---|
+| keep_from=2, seed 0, 4 tries | 291 | 418, i.e. over the 128-qubit cap |
+| keep_from=1, seed 1, 12 tries | 291 | 418, i.e. over the 128-qubit cap |
+| keep_from=99 (no kept helper wires, fits the cap), seed 2, 12 tries | 667 | 127 |
+| open kernel search (ours, §5) | 201 | 126 |
+| syed3000 (public) | 195 | ≤128 |
+
+- Why it loses: the per-target greedy with random fixed factors does not share rank-one features across outputs the way the tensor search does. Each Toffoli in the loaders fans out to up to 22 outputs.
+- Not integrated. No candidate.
