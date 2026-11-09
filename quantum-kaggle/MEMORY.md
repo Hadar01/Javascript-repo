@@ -145,6 +145,17 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Awaiting the user's decision: merger shortlist, and/or one research bet
     (chemistry tensor search, invsqrt adders, or DQI stage profile).
 
+- 2026-11-09 12:30 UTC:
+  - We were at rank 422 of 2,691. Top 100 needs 25.220.
+  - Public v100 checked:
+    - invsqrt: 21.7816 (better).
+    - chem: 11.1982 (about the same).
+    - dqi: 65.2264 with 0 errors under one salt, 64.93 with 1 value error under another (salt-dependent).
+      Keep the v95 dqi.
+  - Submitted mix1 (ref 58163722): v100 invsqrt + v95 dqi + v100 chem, local score 25.1498.
+  - Lesson: the public DQI files now trade rare failures for Toffolis. Always score candidate DQI files under
+    two or more salts before using them.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
