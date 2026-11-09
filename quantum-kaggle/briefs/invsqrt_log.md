@@ -199,3 +199,46 @@ Two ways out, both deep:
 2. Carry-light reverse adders, with the public's reverse scheme decoded at gate level. That scheme uses nested conditional repayment blocks keyed on the stored carry bits, plus conditional duplicate branches.
 
 Our generator remains at ratio 12.40 (`$S/cand/inv_a2.kmb`).
+
+---
+## Component 1: the XAG synthesizer (`quantum-kaggle/tools/xag/`), 2026-11-09
+
+### Library: `xag.py`
+
+**Synthesis**
+- `synthesize` (unbounded) and `synthesize_budget` (cap on live helper wires) take a multi-output truth table over n inputs. Functions are stored as 2^n-bit ints.
+- Greedy: for each target, find the least k such that t = Σ_j f_j·g_j ⊕ s with f, g, s in the GF(2) span of the live wires (inputs, helper products, earlier targets).
+- With the f_j fixed at random, the condition is linear in (s, g_j). Each try is one Gaussian elimination over GF(2): 256 equations in (k+1)·D unknowns.
+- When k ≥ 2, the products are kept as helper wires to grow the span; earlier targets are reused as factors.
+- Seed: all monomials of degree ≥ 2 within the low 4 and the high 4 inputs, sharing prefixes (22 ANDs). This makes products of span elements reach degree 8.
+- When over budget, the oldest non-base helpers are erased by X-measurement. The fix-up CZ(f, g) is Clifford once f and g are re-expressed in the live span.
+
+**Emitter**
+- `Emitter.forward` emits kickmix gates: linear forms are made temporarily on pivot qubits by CNOT/X; each product is one `init_and` or `ccx` straight into the target qubit.
+- `reverse_fresh` is a measurement-based un-lookup with **0 Toffolis**:
+  - non-base helpers are erased first;
+  - each target is then X-measured, with fix-up (−1)^t = Π CZ(f_j, g_j)·Z(s) from a fresh decomposition over the still-live wires (any number of products is free, since CZ between linear forms is Clifford);
+  - base monomials are erased last.
+
+**Test** (`test_emit.py`): kickmix simulation on all 256 addresses.
+- Forward: every target bit is correct.
+- Forward + reverse: all qubits clean, phase 0.
+
+### Benchmark: our invsqrt 57-bit table (8-bit address)
+
+| method | Toffolis lookup + unlookup | total qubits (8 addr + 57 targets + helpers) |
+|---|---|---|
+| kickmix unary init/del_lookup | 254 + 25 = 279 | 73 |
+| XAG, unbounded | **142 + 0** (seeds give 141–143) | 185 |
+| XAG, helper budget 40 (+22 base) | 163 + 0 | 132 |
+| XAG, helper budget 25 | 181 + 0 | 118 |
+| XAG, helper budget 12 | 219 + 0 | 105 |
+
+The public decode is about 169 ANDs. Our unbounded result is below that, and budgets ≤ 25 stay below 200.
+
+**Synthesis cost:** about 1–3 s per run, pure Python.
+
+**Not yet done:**
+- SAT window resynthesis: pycryptosat is not installed.
+- Bilinear-map input for the DQI multiplier.
+- Qubit-aware integration into `gen2.py`. The lookup-time live set is now 57 targets + 22 base + budget, so a progressive, field-by-field construction is the next step for the invsqrt qubit peak.
