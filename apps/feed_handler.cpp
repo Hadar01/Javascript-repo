@@ -29,6 +29,7 @@
 #include "hft/feed/feed_handler.hpp"
 #include "hft/feed/measuring_consumer.hpp"
 #include "hft/feed/pipeline.hpp"
+#include "hft/strategy/model_strategy.hpp"
 #include "hft/net/mold_receiver.hpp"
 #include "hft/net/udp_socket.hpp"
 
@@ -47,7 +48,8 @@ int usage() {
   std::fprintf(stderr,
                "usage: feed_handler --group IP:PORT [--group-b IP:PORT] --symbols SYM[,SYM...] [--net-cpu N]\n"
                "                    [--strategy-cpu N] [--rcvbuf BYTES] [--wait] [--max-orders N]\n"
-               "                    [--idle-timeout-ms N] [--window-us N] [--late-join]\n");
+               "                    [--idle-timeout-ms N] [--window-us N] [--late-join] [--model PATH]\n"
+               "                    [--threshold LOGIT]\n");
   return 2;
 }
 
@@ -71,6 +73,8 @@ int main(int argc, char** argv) {
   hft::feed::FeedHandlerConfig cfg{.book = {.max_orders = std::size_t{4} << 20, .levels_per_side = 64},
                                    .on_full = hft::feed::OnFull::Drop};
   hft::feed::PipelineConfig pcfg{.feed_cpu = 2, .strategy_cpu = 3};
+  std::string model_path;
+  float threshold = 1.0f;
 
   try {
     for (int i = 1; i < argc; ++i) {
@@ -96,6 +100,8 @@ int main(int argc, char** argv) {
       else if (flag == "--max-orders") ok = parse_number(v, cfg.book.max_orders);
       else if (flag == "--idle-timeout-ms") ok = parse_number(v, rcfg.idle_timeout_ms);
       else if (flag == "--window-us") ok = parse_number(v, rcfg.arbitration_window_us);
+      else if (flag == "--model") model_path = v;
+      else if (flag == "--threshold") ok = parse_number(v, threshold);
       else if (flag == "--symbols") {
         std::size_t start = 0;
         while (start <= v.size()) {
@@ -135,10 +141,17 @@ int main(int argc, char** argv) {
                 line_b ? (" and " + line_b->ip + ":" + std::to_string(line_b->port)).c_str() : "", sock_a.rcvbuf());
     std::fflush(stdout);
 
+    std::optional<hft::strategy::DefaultModel> model;
+    if (!model_path.empty()) model = hft::strategy::DefaultModel::load(model_path);
+    hft::LatencyRecorder compute(std::size_t{8} << 20);
+    std::optional<hft::strategy::ModelStrategy<>> strat;
+    if (model) strat.emplace(*model, compute, latency, threshold, symbols.size());
+
     const auto udp0 = hft::net::read_udp_counters();
     const auto t0 = std::chrono::steady_clock::now();
-    const auto run = hft::feed::run_with_strategy(
-        [&] { return receiver->run(std::span<hft::net::UdpSocket* const>(lines), *handler); }, *ring, strategy, pcfg);
+    auto source = [&] { return receiver->run(std::span<hft::net::UdpSocket* const>(lines), *handler); };
+    const auto run = strat ? hft::feed::run_with_strategy(source, *ring, *strat, pcfg)
+                           : hft::feed::run_with_strategy(source, *ring, strategy, pcfg);
     const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     const auto udp1 = hft::net::read_udp_counters();
 
@@ -169,6 +182,16 @@ int main(int argc, char** argv) {
                 ull(book.unknown_order), ull(book.duplicate_order), ull(book.overfill));
     std::printf("updates         published %llu   unchanged %llu   dropped %llu\n", ull(pub.published),
                 ull(pub.unchanged), ull(pub.dropped));
+    if (strat) {
+      const auto c = compute.summarize(tsc);
+      std::printf("strategy        updates %llu   scored %llu   buy signals %llu   sell signals %llu\n",
+                  ull(strat->updates()), ull(strat->scored()), ull(strat->buy_signals()), ull(strat->sell_signals()));
+      std::printf("features+model  p50 %.0f ns  p90 %.0f  p99 %.0f  p99.9 %.0f  max %.0f\n", c.p50_ns, c.p90_ns,
+                  c.p99_ns, c.p999_ns, c.max_ns);
+      std::printf("publish->decide p50 %.0f ns  p90 %.0f  p99 %.0f  p99.9 %.0f  max %.0f  (ring hop + features + model)\n",
+                  lat.p50_ns, lat.p90_ns, lat.p99_ns, lat.p999_ns, lat.max_ns);
+      return 0;
+    }
     std::printf("strategy        received %llu   sequence gaps %llu   clock skew %llu\n", ull(strategy.received),
                 ull(strategy.gaps), ull(strategy.clock_skew));
     std::printf("ring hop (ns)   p50 %.0f  p90 %.0f  p99 %.0f  p99.9 %.0f  max %.0f  (%zu samples)\n", lat.p50_ns,

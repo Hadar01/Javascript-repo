@@ -1,6 +1,9 @@
 // itch_synth: write a synthetic ITCH 5.0 BinaryFILE (see hft/itch/synthetic.hpp).
 //
-//   itch_synth OUT [--messages N] [--symbols N] [--live N] [--seed N]
+//   itch_synth OUT [--messages N] [--symbols N] [--live N] [--seed N] [--trending]
+//
+// --trending adds price dynamics (hidden regimes, one-tick moves): use it
+// for training data. Without it, prices stay centred on a fixed mid.
 //
 // Lets you run itch_stats, the benchmarks and (later) the replay server
 // without downloading Nasdaq's sample files.
@@ -21,7 +24,7 @@ bool parse_uint(std::string_view s, T& out) {
 }
 
 int usage() {
-  std::fprintf(stderr, "usage: itch_synth OUT [--messages N] [--symbols N] [--live N] [--seed N]\n");
+  std::fprintf(stderr, "usage: itch_synth OUT [--messages N] [--symbols N] [--live N] [--seed N] [--trending]\n");
   return 2;
 }
 
@@ -34,6 +37,10 @@ int main(int argc, char** argv) {
 
   for (int i = 2; i < argc; ++i) {
     const std::string_view flag = argv[i];
+    if (flag == "--trending") {
+      cfg.trending = true;
+      continue;
+    }
     if (i + 1 >= argc) return usage();
     const std::string_view value = argv[++i];
     bool ok = false;

@@ -1,8 +1,9 @@
 # Build trees (one per CMake preset)
 build/
 
-# Market data: multi-GB, downloaded by scripts/fetch_itch_sample.sh
-data/
+# Market data and generated training files (multi-GB). The leading / anchors
+# the pattern to the repository root: tests/data/ must stay tracked.
+/data/
 
 # Editor / tooling
 .cache/

@@ -29,6 +29,7 @@
 #include "hft/feed/feed_handler.hpp"
 #include "hft/feed/measuring_consumer.hpp"
 #include "hft/feed/pipeline.hpp"
+#include "hft/strategy/model_strategy.hpp"
 
 namespace {
 
@@ -47,7 +48,7 @@ bool parse_size(std::string_view s, std::size_t& out) {
 int usage() {
   std::fprintf(stderr,
                "usage: pipeline FILE --symbols SYM[,SYM...] [--feed-cpu N] [--strategy-cpu N] "
-               "[--wait] [--max-orders N]\n");
+               "[--wait] [--max-orders N] [--model PATH] [--threshold LOGIT]\n");
   return 2;
 }
 
@@ -68,6 +69,8 @@ int main(int argc, char** argv) {
   hft::feed::FeedHandlerConfig cfg{.book = {.max_orders = std::size_t{4} << 20, .levels_per_side = 64},
                                    .on_full = hft::feed::OnFull::Drop};
   hft::feed::PipelineConfig pcfg{.feed_cpu = 2, .strategy_cpu = 3};
+  std::string model_path;
+  float threshold = 1.0f;  // |logit| > 1 means p > 0.73 or p < 0.27
 
   for (int i = 2; i < argc; ++i) {
     const std::string_view flag = argv[i];
@@ -92,6 +95,11 @@ int main(int argc, char** argv) {
       ok = parse_int(value, pcfg.strategy_cpu);
     } else if (flag == "--max-orders") {
       ok = parse_size(value, cfg.book.max_orders);
+    } else if (flag == "--model") {
+      model_path = value;
+    } else if (flag == "--threshold") {
+      const auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), threshold);
+      ok = ec == std::errc{} && ptr == value.data() + value.size();
     } else {
       ok = false;
     }
@@ -111,27 +119,51 @@ int main(int argc, char** argv) {
     auto handler = std::make_unique<hft::feed::FeedHandler>(cfg, *ring);
     for (const auto& s : symbols) handler->subscribe_ticker(s);
     hft::LatencyRecorder latency(std::size_t{8} << 20);
+
+    auto print_common = [&](const hft::feed::PipelineResult& result, double secs) {
+      const auto& pub = handler->stats();
+      std::printf("threads         feed on cpu %d (%s), strategy on cpu %d (%s)\n", pcfg.feed_cpu,
+                  result.feed_pinned ? "pinned" : "NOT pinned", pcfg.strategy_cpu,
+                  result.strategy_pinned ? "pinned" : "NOT pinned");
+      std::printf("feed            %llu messages in %.3f s: %.1f ns/msg, %.1f M msg/s\n",
+                  static_cast<unsigned long long>(result.feed.messages), secs,
+                  secs * 1e9 / static_cast<double>(result.feed.messages),
+                  static_cast<double>(result.feed.messages) / secs / 1e6);
+      std::printf("updates         published %llu  unchanged %llu  dropped %llu  (ring full policy: %s)\n",
+                  static_cast<unsigned long long>(pub.published), static_cast<unsigned long long>(pub.unchanged),
+                  static_cast<unsigned long long>(pub.dropped),
+                  cfg.on_full == hft::feed::OnFull::Drop ? "drop" : "wait");
+    };
+
+    if (!model_path.empty()) {
+      // Stage 4: features -> model -> decision on the strategy thread.
+      const auto model = hft::strategy::DefaultModel::load(model_path);
+      hft::LatencyRecorder compute(std::size_t{8} << 20);
+      hft::strategy::ModelStrategy<> strat(model, compute, latency, threshold, symbols.size());
+      const auto t0 = std::chrono::steady_clock::now();
+      const auto result = hft::feed::run_pipeline(file.bytes(), *handler, *ring, strat, pcfg);
+      const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+      print_common(result, secs);
+      const auto c = compute.summarize(tsc);
+      const auto d = latency.summarize(tsc);
+      std::printf("strategy        updates %llu  scored %llu  buy signals %llu  sell signals %llu  (|logit| > %.2f)\n",
+                  static_cast<unsigned long long>(strat.updates()), static_cast<unsigned long long>(strat.scored()),
+                  static_cast<unsigned long long>(strat.buy_signals()),
+                  static_cast<unsigned long long>(strat.sell_signals()), static_cast<double>(threshold));
+      std::printf("features+model  p50 %.0f ns  p90 %.0f  p99 %.0f  p99.9 %.0f  max %.0f\n", c.p50_ns, c.p90_ns,
+                  c.p99_ns, c.p999_ns, c.max_ns);
+      std::printf("publish->decide p50 %.0f ns  p90 %.0f  p99 %.0f  p99.9 %.0f  max %.0f  (ring hop + features + model)\n",
+                  d.p50_ns, d.p90_ns, d.p99_ns, d.p999_ns, d.max_ns);
+      return 0;
+    }
+
     hft::feed::MeasuringConsumer strategy{.latency = latency, .latest = {}};
     strategy.latest.reserve(symbols.size());
-
     const auto t0 = std::chrono::steady_clock::now();
     const auto result = hft::feed::run_pipeline(file.bytes(), *handler, *ring, strategy, pcfg);
-    const auto t1 = std::chrono::steady_clock::now();
-    const double secs = std::chrono::duration<double>(t1 - t0).count();
-
-    const auto& pub = handler->stats();
+    const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    print_common(result, secs);
     const auto lat = latency.summarize(tsc);
-    std::printf("threads         feed on cpu %d (%s), strategy on cpu %d (%s)\n", pcfg.feed_cpu,
-                result.feed_pinned ? "pinned" : "NOT pinned", pcfg.strategy_cpu,
-                result.strategy_pinned ? "pinned" : "NOT pinned");
-    std::printf("feed            %llu messages in %.3f s: %.1f ns/msg, %.1f M msg/s\n",
-                static_cast<unsigned long long>(result.feed.messages), secs,
-                secs * 1e9 / static_cast<double>(result.feed.messages),
-                static_cast<double>(result.feed.messages) / secs / 1e6);
-    std::printf("updates         published %llu  unchanged %llu  dropped %llu  (ring full policy: %s)\n",
-                static_cast<unsigned long long>(pub.published), static_cast<unsigned long long>(pub.unchanged),
-                static_cast<unsigned long long>(pub.dropped),
-                cfg.on_full == hft::feed::OnFull::Drop ? "drop" : "wait");
     std::printf("strategy        received %llu  sequence gaps %llu  clock skew %llu\n",
                 static_cast<unsigned long long>(strategy.received), static_cast<unsigned long long>(strategy.gaps),
                 static_cast<unsigned long long>(strategy.clock_skew));

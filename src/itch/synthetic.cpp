@@ -50,8 +50,11 @@ class Generator {
     encode_framed(SystemEvent{.hdr = header(0), .event_code = 'O'}, out);
     for (std::uint16_t s = 0; s < cfg_.symbols; ++s) {
       encode_framed(StockDirectory{.hdr = header(locate_of(s)), .stock = symbol_of(s)}, out);
+      center_.push_back(mid_of(locate_of(s)));
+      regime_.push_back(s % 2 == 0 ? 1 : -1);
     }
-    for (std::uint64_t i = 0; i < cfg_.messages; ++i) step(out);
+    std::uint64_t emitted = 0;
+    while (emitted < cfg_.messages) emitted += step(out);
     return out;
   }
 
@@ -78,18 +81,32 @@ class Generator {
   // small values, so most orders sit near the top of the book.
   Price draw_price(Locate locate, Side side) {
     const std::uint32_t offset = 1 + std::min(rng_.below32(cfg_.max_level_offset), rng_.below32(cfg_.max_level_offset));
-    return side == Side::Buy ? mid_of(locate) - offset * kTick : mid_of(locate) + offset * kTick;
+    const Price center = center_[static_cast<std::size_t>(locate - 1)];
+    return side == Side::Buy ? center - offset * kTick : center + offset * kTick;
   }
 
   Qty draw_shares() { return 100 * (1 + rng_.below32(10)); }
 
-  void step(std::vector<std::byte>& out) {
+  // Emits one or more messages; returns how many.
+  std::uint64_t step(std::vector<std::byte>& out) {
+    if (cfg_.trending) {
+      if (uniform() < cfg_.regime_flip_prob) {
+        auto& r = regime_[static_cast<std::size_t>(rng_.below(cfg_.symbols))];
+        r = -r;
+      }
+      if (uniform() < cfg_.move_prob) {
+        const auto s = static_cast<std::uint16_t>(rng_.below(cfg_.symbols));
+        const int dir = uniform() < cfg_.move_follows_regime ? regime_[s] : -regime_[s];
+        const std::uint64_t n = move(out, s, dir);
+        if (n > 0) return n;
+      }
+    }
     // Below the target, adds win more often; above it, removals do. That
     // keeps the live order count around the target.
     const std::uint64_t add_pct = live_.size() < cfg_.target_live_orders ? 60 : 40;
     if (live_.empty() || rng_.below(100) < add_pct) {
       add(out);
-      return;
+      return 1;
     }
     const std::size_t idx = static_cast<std::size_t>(rng_.below(live_.size()));
     const std::uint64_t r = rng_.below(100);
@@ -102,11 +119,50 @@ class Generator {
     } else {
       execute(out, idx);
     }
+    return 1;
+  }
+
+  double uniform() { return static_cast<double>(rng_.next() >> 11) * 0x1.0p-53; }
+
+  // Move symbol s's centre one tick in direction dir (+1 up, -1 down). An up
+  // move executes every resting ask at or below the new centre, the way an
+  // aggressive buyer lifts the offers; a down move hits the bids. The book
+  // can't cross: new bids go at least one tick below the centre, and the
+  // only asks that could be at or below it were just executed.
+  std::uint64_t move(std::vector<std::byte>& out, std::uint16_t s, int dir) {
+    const Locate locate = locate_of(s);
+    Price& center = center_[s];
+    const Price new_center = dir > 0 ? center + kTick : center - kTick;
+    std::uint64_t n = 0;
+    for (std::size_t i = 0; i < live_.size();) {
+      const LiveOrder& o = live_[i];
+      const bool consumed = o.locate == locate && (dir > 0 ? o.side == Side::Sell && o.price <= new_center
+                                                           : o.side == Side::Buy && o.price >= new_center);
+      if (!consumed) {
+        ++i;
+        continue;
+      }
+      encode_framed(OrderExecuted{.hdr = header(locate), .order_ref = o.ref, .executed_shares = o.shares,
+                                  .match_number = next_match_++},
+                    out);
+      drop(i);  // swaps the last order into slot i: look at i again
+      ++n;
+    }
+    center = new_center;
+    return n;
   }
 
   void add(std::vector<std::byte>& out) {
     const Locate locate = locate_of(static_cast<std::uint16_t>(rng_.below(cfg_.symbols)));
-    const Side side = rng_.below(2) == 0 ? Side::Buy : Side::Sell;
+    // The non-trending path must keep drawing exactly as before, so that
+    // every existing synthetic feed (and every recorded result) is unchanged.
+    Side side;
+    if (cfg_.trending) {
+      const double p_buy = 0.5 + cfg_.flow_bias * regime_[static_cast<std::size_t>(locate - 1)];
+      side = uniform() < p_buy ? Side::Buy : Side::Sell;
+    } else {
+      side = rng_.below(2) == 0 ? Side::Buy : Side::Sell;
+    }
     const LiveOrder o{.ref = next_ref_++, .locate = locate, .side = side,
                       .price = draw_price(locate, side), .shares = draw_shares()};
     encode_framed(AddOrder{.hdr = header(locate), .order_ref = o.ref, .side = o.side,
@@ -174,6 +230,8 @@ class Generator {
   OrderRef next_ref_ = 1;
   std::uint64_t next_match_ = 1;
   std::vector<LiveOrder> live_;
+  std::vector<Price> center_;  // per symbol: quotes form around it
+  std::vector<int> regime_;    // per symbol: +1 up, -1 down (trending only)
 };
 
 }  // namespace

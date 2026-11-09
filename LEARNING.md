@@ -886,3 +886,195 @@ replay_server (process, core 1)                 feed_handler (process)
 3. Why do feeds keep packets below the MTU? What happens to a UDP datagram larger than the MTU, and where did our 1,372-byte limit come from?
 4. The receiver busy-polls with non-blocking `recv`. What did the benchmark show for busy-poll vs blocking, and vs the in-process ring? How do trading firms go faster than the kernel's UDP stack?
 5. A single line loses 1% of its packets. What happens to the order book, and how would you detect and recover in production? How did we tell our own socket buffer overflowing apart from loss on the network?
+
+#### Model answers (stage 3)
+
+**1. MoldUDP64 and loss detection.**
+- **The header:** session (10 bytes), the sequence number of the *first* message (8 bytes, BE) and the message count (2 bytes, BE).
+- **Detecting loss:** after a packet `(s, n)` the next should start at `s + n`; a larger sequence number means that many messages were lost.
+- **Loss at the end of a burst:** the heartbeat (count 0) and end-of-session packets carry the next sequence number, so they reveal it.
+- **Loss of the first packet:** you must know the session starts at 1. "First packet seen = start" hides it, which is exactly what our test caught.
+- **Why heartbeats:** they also tell a quiet market apart from a dead feed.
+
+**2. A/B arbitration.**
+- The same packets go out on two groups over separate network paths, and the receiver keeps the first copy of each. A message is lost only if both lines lose it.
+- **Why 99 gaps:** the receiver read line A ahead of line B. A lost packet *k*, A's *k+1* was read before B's *k*, a gap was declared, and B's *k* was then thrown away as old.
+- **The fix:** a merge. Each line holds one waiting packet, the lowest sequence number goes first, and before declaring a gap the receiver waits briefly for the other line.
+- **Choosing the window:** too short gives false gaps whenever the two paths differ in latency. Too long delays everything after a gap that really happened (lost on both), leaving the book stale for longer. Set it from the measured difference between the lines' arrival times.
+
+**3. The MTU.**
+- A datagram larger than the MTU is fragmented at the IP layer, and it is lost if *any* fragment is lost. Fragments are also dropped by some network gear, and reassembly costs time.
+- 1,372 = 1,400 (this container's MTU) − 20 (IPv4 header) − 8 (UDP header).
+
+**4. Busy-poll vs blocking vs the ring, and going faster.**
+- **Round trip p50:** busy-poll 3.8–3.9 µs; blocking 28–29 µs; the ring 0.54–0.61 µs.
+- **Faster than the kernel:** kernel bypass (Solarflare OpenOnload/ef_vi/TCPDirect, Mellanox VMA, DPDK, AF_XDP), FPGA network cards, hardware timestamping, busy polling, pinned cores with interrupts moved elsewhere, and no system calls on the hot path.
+
+**5. 1% loss on one line.**
+- **What happens:** adds and deletes go missing, giving "unknown order" anomalies (13,949) and ghost orders, and the book is wrong (SYN3 20,998 shares vs a true 5,851).
+- **In production:**
+  - detect the gap by sequence number
+  - mark the symbol stale
+  - request a retransmission (the MoldUDP64 request server), or rebuild from a snapshot (GLIMPSE) and replay
+  - run A/B lines so most losses never matter
+- **Our loss vs the network's:** the change in `RcvbufErrors` (`/proc/net/snmp`) counts *our* socket buffer overflowing. 4,343 = exactly the missing packets. (`SO_RXQ_OVFL` gives the same count per socket.)
+
+---
+
+## Stage 4: features, training, and inference in nanoseconds
+
+### The flow, and why it is shaped this way
+
+```
+ITCH ─► feature_dump (the real pipeline, C++) ─► features.bin + .json ─► python/train.py
+                                                                            │  scikit-learn
+                         tests/data/golden.bin ◄── 1,000 inputs + Python's predictions
+                         model.bin (HFTMLP01)  ◄────────────────────────────┘
+                              │
+strategy thread: BookUpdate ─► FeatureBuilder (C++) ─► Mlp::logit (C++) ─► decision
+```
+
+- **Features are computed in exactly one place:** `include/hft/features/features.hpp`.
+  - `feature_dump` runs the real pipeline and writes them out, with the column names in a JSON file beside the data. Python never computes features.
+  - If two implementations existed, they would drift apart (rounding, edge cases, a changed window), and the live model would see different numbers than it was trained on. That is **train/serve skew**, the most common way production models fail silently.
+- **The golden file proves the export.**
+  - Python saves 1,000 test inputs with scikit-learn's predictions, and `MatchesPythonOnTheGoldenFile` requires C++ to reproduce them.
+  - Measured: the largest probability difference is **1.5 × 10⁻⁷**, one float32 rounding step, with 0 disagreeing decisions.
+  - Any export mistake (a transposed matrix, a missing normalisation, layers in the wrong order) would fail it.
+
+### The features (10, from the 128-byte snapshot plus a little state per symbol)
+
+| Feature | Definition | Intuition |
+|---------|------------|-----------|
+| `spread_ticks` | (ask − bid) / tick | Wide spreads tend to close |
+| `imbalance_1/3/5` | (Σbid qty − Σask qty) / Σboth, over 1/3/5 levels | Which side has more resting interest |
+| `microprice_offset_ticks` | (bid·aq + ask·bq)/(aq + bq) − mid = (spread/2)·imbalance_1 | The mid tilted toward the side more likely to be consumed |
+| `ofi_1` | Order-flow imbalance (Cont, Kukanov & Stoikov 2014) / best-level depth | Liquidity added on the bid minus liquidity added on the ask since the last update |
+| `ofi_ema` | Its exponential moving average (α = 0.1) | Persistent buying or selling pressure |
+| `last_move_sign` | ±1: direction of the most recent mid change | Momentum or reversal |
+| `mid_dev_ticks` | mid − EMA(mid) (α = 0.05) | Short-term trend |
+| `log_dt_us` | log(1 + µs since the last update) | Activity level |
+
+**OFI** at the best level, where q is the queue size and P the price at update n:
+
+e_n = q_b(n)·1[P_b(n) ≥ P_b(n−1)] − q_b(n−1)·1[P_b(n) ≤ P_b(n−1)] − q_a(n)·1[P_a(n) ≤ P_a(n−1)] + q_a(n−1)·1[P_a(n) ≥ P_a(n−1)]
+
+- A **rising bid** counts its whole new queue as buying interest.
+- A **falling bid** counts the old queue as removed.
+- An **unchanged bid** counts the change in size.
+
+The tests check one case each.
+
+### Labels, splitting, leakage
+
+- **The label** is the direction of the symbol's next mid change (up = 1, down = 0). Rows after the last change have no label.
+- **The split is chronological** (the first 70% of time trains). A random split would let the model learn from rows in the future of the rows it's tested on. With regimes lasting thousands of messages, it would effectively see the answer.
+- **The normalisation statistics come from the training part only**, for the same reason.
+
+### The data, and how much to trust it
+
+- **The first attempt failed.** On the default synthetic feed only **846 of 611,063 rows** had a label: the mid never moves once the book fills, because its prices are centred on a fixed mid. Scores on 254 test rows are noise.
+- **The fix:** `--trending` adds dynamics.
+  - Each symbol has a hidden up or down regime.
+  - A move consumes the opposite best level (an aggressive buyer lifting the offers), and 80% of moves follow the regime.
+  - Order arrivals lean toward the regime's side.
+  - It is opt-in: the default feed is **byte-identical** to before (same MD5), so no earlier result changed.
+- **Validated before training:** 0 anomalies, and the SYN3 book was never locked or crossed in 375,020 updates.
+- **What it can and can't show:** the rules are known, so it tests whether the model *finds the structure that is there*. It says nothing about real markets. Retrain on a Nasdaq day with the same commands.
+
+### Results (test set, the last 30% of time; 982,880 labelled rows, 51% "up")
+
+| Model | Accuracy | AUC |
+|-------|----------|-----|
+| Rule: imbalance_1 > 0 → up | 0.292 | 0.258 |
+| Rule: the mid reverses its last move | 0.214 | 0.214 |
+| Logistic regression | 0.804 | 0.879 |
+| MLP 32-16 | **0.812** | **0.896** |
+
+How to read it:
+
+- **AUC below 0.5** means a feature is informative, but backwards.
+  - Reversal fails because the regimes produce *momentum*.
+  - Imbalance is inverted because a newly formed best level, on the side the price just moved toward, starts small.
+- **Is 0.812 too good?** Knowing the regime perfectly gives about 0.80, because 20% of moves are coin flips. Checked by splitting the test set:
+  - at the normal 2-tick spread: **0.780**, just under the regime's ceiling
+  - with a wider spread, right after a move: **0.844**. The next change there is the gap re-filling from the direction the price just moved, which is mechanical and predictable.
+  - So there's no leakage: the model finds momentum, the regime's footprint in order flow, and spread re-filling.
+
+### The model in C++ (`include/hft/model/mlp.hpp`)
+
+- **Compile-time sizes** (`Mlp<10, 32, 16>`): constant loop counts, which the compiler unrolls and vectorises. Loading checks the file's dimensions and size: missing, truncated or the wrong shape throws once at startup.
+- **`float`, not `double`:** twice as many values per vector register, and half the memory. The whole model is 3.6 KB, so it lives in L1.
+- **Weights stored input-major (transposed),** so a layer is `h[0..H) += w[i][0..H) * x[i]`: an element-wise multiply-add over independent outputs, which vectorises as written.
+  - The textbook `h[j] = Σᵢ w[j][i]·x[i]` is a *reduction*. Vectorising a reduction reorders floating-point additions, which the compiler won't do without `-ffast-math`, because float addition isn't associative.
+  - Measured: no scalar multiplies anywhere in the generated code.
+- **The decision is taken on the logit:** p > 0.5 ⇔ logit > 0, and |logit| > 1 ⇔ p ∉ [0.27, 0.73]. No `exp` on the hot path.
+- **`inv_std`** is stored, not `std`: a multiply instead of a divide (division is about 4× slower).
+
+### Measured costs (Xeon @ 2.1 GHz, pinned, median of 5)
+
+| One prediction | Time | vs C++ |
+|----------------|------|--------|
+| C++ `Mlp::logit` (`-O2`) | **0.12–0.13 µs** | 1× |
+| C++ `Mlp::logit` (`-O2 -march=native`) | 0.057 µs | 0.45× |
+| numpy, 4 array operations | 4.9 µs (p99 8.2) | ~38× |
+| pure Python loops | 60 µs | ~470× |
+| scikit-learn `predict_proba` | 77 µs (p99 131) | ~600× |
+| scikit-learn, batch of 1,000 (per row) | 0.17 µs | (batching hides the per-call overhead) |
+
+C++ features take 22 ns, and the whole strategy step (sequence check, features, model, decision, timing) 190–197 ns.
+
+### Compiler flags, measured (one variable at a time)
+
+| Flags | Model logit | Generated code |
+|-------|-------------|----------------|
+| `-O2` | 120 ns | SSE, compact loops (189 lines), 18 stack accesses |
+| `-O3` | **209 ns, slower** | Fully unrolled (625 lines), **88 stack accesses**: there are only 16 SSE registers, so values spill to memory |
+| `-O2 -march=native` | **57 ns** | AVX `ymm`/`zmm` registers + FMA (fused multiply-add) |
+
+The lesson: `-O3` is not "more optimised", it's "more aggressive". Measure it. In production, build for the exact server CPU.
+
+**One more benchmark mistake caught:** at `-O3` the strategy-step benchmark measured 44 ns, *faster than the model alone*. The compiler had inlined everything, seen that the buy/sell counters were never read, and deleted the model. The fix is `DoNotOptimize` on the decision.
+
+### Two traps in the data format
+
+- **Implicit padding.** The C++ row was 64 bytes; numpy's packed dtype was 60. The compiler had added 4 hidden bytes to keep the struct a multiple of 8 (its `uint64_t` alignment). The `row_bytes` check in the JSON caught it, and now every padding byte is an explicit field on both sides. Without the check, every row after the first would have been read misaligned: garbage training data, and no error.
+- **Commas in macros, again.** `EXPECT_THROW(Mlp<2, 2, 1>::load(...), ...)` is split at the template's commas. A type alias fixes it.
+
+### End to end: throughput turns into latency
+
+- **The file replayed flat out, 8 symbols:** the feed publishes ~3 M updates/s, but the strategy needs ~200–260 ns each.
+  - The 4,096-slot ring fills, and **Little's law** (waiting time = queue length ÷ service rate ≈ 4,096 ÷ 3.3 M/s ≈ 1.2 ms) predicts the measured 0.4–1.5 ms publish → decision tail, plus drops.
+  - Fixes:
+    - **conflate** (keep only the newest snapshot per symbol; stale ones are worthless)
+    - make the consumer faster (`-march=native` halves the model)
+    - subscribe to fewer symbols, or shard them across strategy threads
+    - keep the queue short, so delay stays bounded and the excess is dropped
+- **Real-time multicast replay, 8 symbols:** 0 gaps, 0 drops, publish → decision **p50 670–699 ns, p90 953–990 ns, p99 3.2–3.4 µs**. Features + model: p50 278–290 ns.
+- **Determinism:** both network runs and the drop-free file run made *identical* decisions (362,400 buys, 332,036 sells).
+
+### No allocation, again
+
+`StrategyFeaturesAndModelAllocateNothing`: every update from a real feed goes through `ModelStrategy`, with 0 allocations.
+
+### Common mistakes from this stage
+
+1. Computing features twice (training in Python, serving in C++): train/serve skew.
+2. A random train/test split on time-series data, or normalisation fitted on the full dataset.
+3. Celebrating a high accuracy without asking what the ceiling is, or checking for leakage.
+4. Ignoring AUC < 0.5: it means "informative but backwards".
+5. Exporting weights without a parity test.
+6. A textbook dot-product loop that can't vectorise without `-ffast-math`.
+7. Assuming `-O3` beats `-O2`.
+8. Computing `exp()` just to compare a probability with 0.5.
+9. Relying on implicit struct padding in a file format.
+10. A benchmark whose result is never used.
+11. A deep queue in front of a slow consumer: it trades drops for milliseconds of delay.
+
+### Interview questions (stage 4)
+
+1. What is train/serve skew, and how does this project prevent it? How do you prove the C++ model gives the same answers as the Python one?
+2. Why must the split be chronological, with normalisation fitted on the training part only? What would a random split have done to the reported accuracy here?
+3. Explain order-flow imbalance and the microprice. Why did both simple rules score below 0.5, and how did we check that the MLP's 0.812 isn't leakage?
+4. Why are the weights stored transposed? Why is `-O3` slower than `-O2` for this model, and why is `-march=native` twice as fast? Why does the strategy compare logits instead of probabilities?
+5. Replaying the file flat out gave about 1.2 ms of publish-to-decision latency at the tail, while real-time multicast gave about 0.7 µs at the median. Explain using Little's law, and give three ways to fix the overloaded case.

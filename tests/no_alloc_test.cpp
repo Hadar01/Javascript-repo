@@ -29,6 +29,7 @@
 
 #include "hft/book/market_book.hpp"
 #include "hft/feed/feed_handler.hpp"
+#include "hft/strategy/model_strategy.hpp"
 #include "hft/itch/parser.hpp"
 #include "hft/itch/synthetic.hpp"
 
@@ -185,6 +186,32 @@ TEST(NoAllocation, FeedHandlerPublishingAllocatesNothing) {
   EXPECT_EQ(allocations, 0u);
   EXPECT_EQ(fh.stats().published, hft::feed::UpdateRing::kCapacity);
   EXPECT_GT(fh.stats().dropped, 0u);
+}
+
+TEST(NoAllocation, StrategyFeaturesAndModelAllocateNothing) {
+  // The strategy thread's hot path from stage 4: sequence check, features,
+  // model, decision, latency recording. Updates come from a real feed.
+  const auto [setup, trading] = split_phases(feed());
+  auto ring = std::make_unique<hft::feed::UpdateRing>();
+  hft::feed::FeedHandler fh({.book = {.max_orders = 16'384, .levels_per_side = 64}, .on_full = hft::feed::OnFull::Drop},
+                            *ring);
+  for (int s = 0; s < kSymbols; ++s) fh.subscribe_ticker("SYN" + std::to_string(s));
+  hft::itch::parse_binary_file(setup, fh);
+  hft::itch::parse_binary_file(trading, fh);  // fills the ring (4,096 updates)
+
+  const auto model = hft::strategy::DefaultModel::load(std::string(HFT_TEST_DATA_DIR) + "/model.bin");
+  hft::LatencyRecorder compute(1 << 16), decision(1 << 16);
+  hft::strategy::ModelStrategy<> strat(model, compute, decision, 1.0f, kSymbols);
+
+  std::size_t allocations = 0;
+  {
+    const AllocationCounter c;
+    hft::feed::BookUpdate u;
+    while (ring->try_pop(u)) strat(u);
+    allocations = c.count();
+  }
+  EXPECT_EQ(allocations, 0u);
+  EXPECT_GT(strat.scored(), 0u);
 }
 
 TEST(NoAllocation, GrowthBeyondReserveIsTheOnlySourceOfAllocations) {

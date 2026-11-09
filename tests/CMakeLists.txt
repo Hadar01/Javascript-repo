@@ -33,5 +33,10 @@ hft_add_test(pipeline_test     SOURCES pipeline_test.cpp     LIBS hft::core)
 hft_add_test(moldudp64_test        SOURCES moldudp64_test.cpp        LIBS hft::core)
 hft_add_test(sequence_tracker_test SOURCES sequence_tracker_test.cpp LIBS hft::core)
 hft_add_test(udp_test              SOURCES udp_test.cpp              LIBS hft::core)
+hft_add_test(features_test         SOURCES features_test.cpp         LIBS hft::core)
+hft_add_test(mlp_test              SOURCES mlp_test.cpp              LIBS hft::core)
+# The trained model and the golden predictions python/train.py exported.
+target_compile_definitions(mlp_test PRIVATE HFT_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
 # Its own executable: it replaces the global operator new.
 hft_add_test(no_alloc_test     SOURCES no_alloc_test.cpp     LIBS hft::core)
+target_compile_definitions(no_alloc_test PRIVATE HFT_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
