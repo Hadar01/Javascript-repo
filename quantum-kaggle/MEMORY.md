@@ -136,6 +136,15 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Chemistry: the GPU notebook is held (expected to score about 10.9, below public). The CPU loader-trick port is in progress.
   - Agents hit the usage limit at about 21:00 UTC Nov 8 and were resumed after it reset.
 
+- 2026-11-09 ~04:00 UTC:
+  - Submission 58149714 (v95 set) scored **25.14772**: **rank 280 of 2,668**. This is our current best.
+  - Dead end: the XAG lookup inside the invsqrt generator makes it worse (8.58×), because its helpers cost qubits.
+    The real blocker is carry-light reverse adders; invsqrt is paused.
+  - Dead end: XAG on the chemistry loaders gives 291 products at best, against our kernel search's 201 and
+    syed3000's 195. Closing that gap needs a GF(2) tensor-decomposition search (research); the floor is about 168.
+  - Awaiting the user's decision: merger shortlist, and/or one research bet
+    (chemistry tensor search, invsqrt adders, or DQI stage profile).
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
