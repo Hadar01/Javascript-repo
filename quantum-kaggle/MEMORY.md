@@ -159,6 +159,35 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
 
 - 2026-11-09: Supervisor progress report written as a Claude Doc: https://claude.ai/artifact/Yc3FjAKQLXEfAq75cbTu6D
 
+## SUPERVISOR GUIDANCE (2026-11-09) — follow this
+- **Milestone:** one reproducible improvement of our own, independently verified. Stop broad brainstorming.
+- **Priority 1: bounded rotation-merge experiment (invsqrt).** Our dismissal was wrong.
+  - At exactly +1 qubit and −42 Tof-eq: 63×1495.8 / (62×1537.8) = 0.98838, a 1.16% task-cost cut,
+    taking the score to about 25.248 (above the top-100 line).
+  - Measure the exact extra qubits, recomputation, phase corrections and full-circuit cost.
+- **Priority 2: exact DQI profile, then one targeted redesign.**
+  - Measure forward/reverse extraction, polynomial synthesis, scan, peak qubits and workspace reuse.
+  - Measure mean T and failures across many independent seeds.
+  - Evaluate everything under R(ε+)·Q²·T.
+- **Rigour:**
+  - "No improvement found" is not "optimal"; narrow every claim to what was tested.
+  - Two salts are not enough to rank rare-failure circuits. Use an equal evaluation budget per candidate,
+    report uncertainty, and reserve fresh seeds for final validation.
+  - The ~168-product chemistry "floor" is not a proven bound, and one failed fit does not prove a
+    smaller table is impossible.
+- **XAG:** optimise for full-circuit cost and peak workspace, not AND count.
+- **Chemistry GPU run:** defer unless there is a specific new hypothesis.
+- **Reproducibility:** keep upstream source, licences, versions, parameters and artifact hashes alongside every
+  improvement. The exact prize requirements still need confirming.
+- **Merger:** the "+3–8%" figure is speculation until a specific contribution is identified.
+- **DQI targets, other tasks unchanged:**
+
+  | Target score | DQI cost cut | DQI ratio |
+  |---|---|---|
+  | 25.22 | −0.83% | 65.77× |
+  | 26.35 | −13.05% | 75.01× |
+  | 29.30 | −36.76% | 103.13× |
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
