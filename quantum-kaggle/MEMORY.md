@@ -250,6 +250,22 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     conditional moves, and porting the shifter to the end network.
     - Untested: windows through HMR plus fix-up blocks.
 
+- 2026-11-10 19:00 UTC:
+  - The conditional-split branches of 26ebf39d are Gidney adders. There are 11 pairs, worth 37.75 mean T.
+  - Every tested rewrite loses or ties at Q=62. Any further saving needs a slot freed at the branch peak by
+    something outside the branch.
+  - So far, every own-improvement attempt on invsqrt has been exactly negative:
+    - rotation merge;
+    - delay line;
+    - rotation absorption;
+    - window, pair and triple merges;
+    - conditional moves and fix-up blocks;
+    - split branches.
+  - Rank slipped to 343 (rank 300 needs 25.254).
+  - Public v107 release:
+    - invsqrt a15b0d73 (alexchilton) and dqi 9fcda0c1 are new; verification and a 10-salt sweep are running.
+    - chem is the marculera build again (11.2204).
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
