@@ -67,7 +67,7 @@ int main(int argc,char**argv){
   vector<long> segfirst(nseg,-1), seglast(nseg,-1);
   long gpeak=0,gpeakop=0; const int HL=860; vector<vector<double>> hist(nseg,vector<double>(nq-HL+1,0)); vector<vector<long>> entries(nseg,vector<long>(nq-HL+1,0)); long prevlive=live; vector<long> dumpops; if(getenv("DUMP_OPS")){string ds=getenv("DUMP_OPS");size_t st=0;while(st<ds.size()){size_t e=ds.find(',',st);if(e==string::npos)e=ds.size();dumpops.push_back(atol(ds.substr(st,e-st).c_str()));st=e+1;}} FILE*dumpf=fopen((out+"_dumps.txt").c_str(),"w"); size_t di=0; sort(dumpops.begin(),dumpops.end()); vector<double> qlive(nq,0); vector<long> seg_of_dump; vector<uint8_t> gpeakmap(nq,0);
   vector<long> tl_peak, tl_peakws; vector<double> tl_tof; long wpeak=0,wpeakws=0; double wtof=0;
-  size_t iqqq=0,iqq=0,iq=0,ib=0,ic=0; double tottof=0;
+  size_t iqqq=0,iqq=0,iq=0,ib=0,ic=0; double tottof=0; vector<uint32_t> fire3(nqqq,0); vector<uint64_t> fireop(nqqq,0);
   auto pc=[&](const u64*c){long t=0;for(int w=0;w<W;w++)t+=__builtin_popcountll(c[w]);return t;};
   for(u64 k=0;k<nops;k++){
     uint8_t t=op[k]; int sg=seg[k]; segops[sg]+=1; if(segfirst[sg]<0)segfirst[sg]=k; seglast[sg]=k;
@@ -83,7 +83,7 @@ int main(int argc,char**argv){
       u64*A=qv(a),*Bq=qv(b),*C=qv(c);
       if((bt&0x0f)==1){for(int w=0;w<W;w++)C[w]^=cond[w]&A[w]&Bq[w];upd(c);}
       else if((bt&0x0f)==0){for(int w=0;w<W;w++)phase[w]^=cond[w]&A[w]&Bq[w]&C[w];}
-      else {for(int w=0;w<W;w++){u64 cc=A[w]&cond[w];u64 x=(Bq[w]^C[w])&cc;Bq[w]^=x;C[w]^=x;}upd(b);upd(c);}
+      else {long fc=0;for(int w=0;w<W;w++){u64 cc=A[w]&cond[w];fc+=__builtin_popcountll(cc);u64 x=(Bq[w]^C[w])&cc;Bq[w]^=x;C[w]^=x;}upd(b);upd(c);fire3[iqqq-1]=fc;fireop[iqqq-1]=k;}
     } else if(nqt==2){uint32_t a=qq0[iqq],b=qq1[iqq];iqq++;u64*A=qv(a),*Bq=qv(b);
       if((bt&0x0f)==1){for(int w=0;w<W;w++)Bq[w]^=cond[w]&A[w];upd(b);}
       else if((bt&0x0f)==0){for(int w=0;w<W;w++)phase[w]^=cond[w]&A[w]&Bq[w];}
@@ -125,7 +125,7 @@ int main(int argc,char**argv){
   o=fopen((out+"_timeline.tsv").c_str(),"w");fprintf(o,"window_end_op\tpeak_live\tpeak_live_ws\tmean_tof\n");
   for(size_t i=0;i<tl_peak.size();i++)fprintf(o,"%llu\t%ld\t%ld\t%.4f\n",(unsigned long long)((i+1)*TW),tl_peak[i],tl_peakws[i],tl_tof[i]);fclose(o);
   o=fopen((out+"_peakmap.txt").c_str(),"w");fprintf(o,"peak_live %ld at op %ld\n",gpeak,gpeakop);for(uint32_t q=0;q<nq;q++)fputc(gpeakmap[q]?'1':'.',o);fputc('\n',o);fclose(o);
-  fclose(dumpf); {FILE*u=fopen((out+"_qutil.txt").c_str(),"w");for(uint32_t q=840;q<nq;q++)fprintf(u,"%u %.4f\n",q,qlive[q]*256.0/nops);fclose(u);}
+  fclose(dumpf); if(getenv("FIRE_OUT")){FILE*fo=fopen(getenv("FIRE_OUT"),"w");for(size_t i=0;i<nqqq;i++)if(fireop[i])fprintf(fo,"%llu %u\n",(unsigned long long)fireop[i],fire3[i]);fclose(fo);} {FILE*u=fopen((out+"_qutil.txt").c_str(),"w");for(uint32_t q=840;q<nq;q++)fprintf(u,"%u %.4f\n",q,qlive[q]*256.0/nops);fclose(u);}
   printf("shots %ld mean_toffoli %.4f value_errors %ld phase_errors %ld peak_live %ld at op %ld nq %u\n",N,tottof/N,verr,perr,gpeak,gpeakop,nq);
   return 0;
 }

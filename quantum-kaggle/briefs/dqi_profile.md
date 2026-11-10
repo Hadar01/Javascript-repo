@@ -94,10 +94,30 @@ bits.
   - Per node group gi, the **N-word targets roughly double** (S64: 3,153 → 6,165 for gi = 16; summed over groups
     +24.2k).
   - There is also +5.5k on ancillas, +1.0k CCZ (phase repayment), +1.3k CSWAP and +1.3k on the main-chain word.
-  - Source: the reverse pass re-runs a "scalar chain" (D/N recurrence, one `mul24` per step) to rebuild each node's
-    normaliser D. It needs D to repay the phases of the forward `gauge` HMR and of its own `invmask` HMR
-    (`external_node_chain(..., reverse=True)`, `extraction(reverse=True)`).
-  - **This recomputation is the single largest identifiable redundancy in the circuit.**
+  - ~~Source: the reverse re-runs the scalar chain twice.~~ **CORRECTED 2026-11-10 (v100 event-level census; source
+    `exp/new/a01/companion.py`, "one scalar return").** v100 already runs **one** scalar return per node, not two.
+    The older `final_decoder/decode.py` I first read does have the two-chain reverse; the lineage has since removed
+    one chain.
+  - Static accounting from 24-bit swap + Toffoli step signatures (`evacct.py`, `evgroups.py`):
+
+    | Toffolis | forward | reverse |
+    |---|---|---|
+    | full chain steps | 196 steps, 36,155 | the same 196 steps, 36,155 |
+    | 99-Toffoli scalar-type steps | 83, 8,217 | 294, 29,106 |
+    | 12-bit 42-Toffoli steps | 43 | 94 |
+
+  - So the reverse excess of +37.5k splits into:
+    - **+23.0k** for the single scalar return (211 × `mul24` plus 51 × 42);
+    - **+15.4k** for per-node glue: about 1.2k T + 75 CCZ + 96–120 CSWAP per node in reverse, against about 0.6k
+      forward. This glue is the normalise-three, pay-before-retire and restore-direct steps of the companion.
+  - **The one remaining scalar return is at the minimum for this architecture (argument, ESTIMATE).**
+    - The forward stores normalised (N/D, L/D²) and HMR-measures D.
+    - The reverse chain, run from D = 1, ends with the garbage scale λ = 1/D_f.
+    - λ is a deterministic function of the restored node word u and the heads, so erasing it requires recomputing
+      D_f(u, heads), i.e. one scalar chain.
+    - Erasing λ by HMR instead creates a debt that again needs D_f.
+    - Keeping D_f from the forward would cost 24 qubits per node.
+    - The lineage reached the same "one scalar return" design.
 
 ### Inside conversion (MEASURED tag sequence)
 This is a Euclid-style recursion of about 35 quotient steps.
@@ -230,7 +250,7 @@ workspace anywhere. They also assume R is unchanged (no new failure families).
 
 | # | target (measured share) | idea | gain if achieved | risk / qubit check |
 |---|---|---|---|---|
-| 1 | **Reverse-pass excess: 48.1k = 12.2% of T.** Of this, unextract − extract = 37.5k (24.2k on node N-words) and unsynthesis − synthesis = 8.8k. | Stop paying twice for normalisers. Keep D (or λ = 1/D) live through the reverse chain and repay the gauge and invmask phases from it, then uncompute D with **one** reverse scalar chain instead of measuring it and rebuilding it twice. Equivalently, mirror the forward exactly so the reverse costs about the forward's 184 T/step instead of ~283. | **−24k T (one chain): cost ×0.939, DQI 65.2 → 69.4 (+6.4%).** Full parity (−37.5k): ×0.905, **→ 72.1**. Adding unsynthesis parity: −46k, ×0.884, → 73.8. | Medium. D is 24 qubits, but it is *already* live during these chains (they rebuild it), so holding it a little longer should not raise the peak. The unextract peak excursions (270) must be checked. |
+| 1 (**CORRECTED 2026-11-10: the −24k target is not available in v100.** v100 already has the one-scalar-return; see §1. What remains in reverse extraction is the companion glue, ≈ +11–15k over forward, plus 8.8k in unsynthesis.) | **Reverse-pass excess: 48.1k = 12.2% of T.** Of this, unextract − extract = 37.5k (24.2k on node N-words) and unsynthesis − synthesis = 8.8k. | ~~Stop paying twice for normalisers.~~ (Superseded text follows.) Keep D (or λ = 1/D) live through the reverse chain and repay the gauge and invmask phases from it, then uncompute D with **one** reverse scalar chain instead of measuring it and rebuilding it twice. Equivalently, mirror the forward exactly so the reverse costs about the forward's 184 T/step instead of ~283. | **−24k T (one chain): cost ×0.939, DQI 65.2 → 69.4 (+6.4%).** Full parity (−37.5k): ×0.905, **→ 72.1**. Adding unsynthesis parity: −46k, ×0.884, → 73.8. | Medium. D is 24 qubits, but it is *already* live during these chains (they rebuild it), so holding it a little longer should not raise the peak. The unextract peak excursions (270) must be checked. |
 | 2 | **Extraction chain steps: ~124k of the 156k = 31% of T** (266 forward steps × 184 + reverse steps × ~283) | (a) A cheaper GF(2^24) product. `mul24` is 99 ANDs and the corrected product 84–99. Every AND saved per step is worth ~0.13% of cost. (b) A lower-rank update per step, e.g. merge the corrected product and the head product into one bilinear form, or reuse factors' linear forms across the two products. | −10% of chain T ≈ −12k: cost ×0.970, **→ 67.2 (+3.1%)**. −20%: ×0.94, → 69.4. | High novelty and search effort (bilinear-rank / flip-graph search). Q-neutral if the kernels keep ≤ 43 private wires. |
 | 3 | **Conversion: 123k = 31.2% of T**, quadratic Euclid with ~35 inverse + route steps and 10.3k CSWAP | (a) Remove CSWAP pivot routing (10.3k = 2.6%) by fixing the chart for the generic case (gap probability ~1/4096 per step; must stay exact or be priced). (b) Fuse conversion into synthesis: build the residue-converted numerator alongside B during synthesis. That would save up to the whole forward + reverse convert, but it is speculative. | (a) −5k: ×0.987, → 66.1 (+1.3%). (b) −30% of conversion ≈ −37k: ×0.906, → 72.0. | (a) low risk; (b) research. Any new pivot approximation adds rate p: each +1e-5 costs 0.45% of ratio. |
 
@@ -239,5 +259,14 @@ workspace anywhere. They also assume R is unchanged (no new failure families).
 - The scan: it sits at the 11-AND per-point floor and 70 points are already removed by the mask projection.
 - Fixing the w ≤ 17 family: it is worth 0.04%.
 
-**Order of attack.** Do #1 first. It is a pure uncomputation-schedule change inside a stage we can isolate by tags,
-it is measured, and its gain is large. #2a can run as a background search. #3a is a cheap side task.
+~~**Order of attack.** Do #1 first.~~ **Revised 2026-11-10.** #1 in its stated form is already harvested in v100;
+see the corrected §1.
+
+What is left in the reverse extraction:
+- the companion glue, ≈ +11–15k over forward (≈ +830 T per node, ×14 nodes);
+- the unsynthesis excess, +8.8k, mostly 34 extra `inverse12` and the divisions of the undo;
+- `mul24` cost: about 770 `mul24`-type products sit in extraction alone, so each AND saved in `mul24` is worth
+  ≈ 770 T (0.19%).
+
+Pole-handling removal was checked and is negligible: v100 already uses CX pole gauges. Only 48 never-firing CSWAPs
+remain in extract and unextract.
