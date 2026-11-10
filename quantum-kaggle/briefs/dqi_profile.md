@@ -305,3 +305,62 @@ Labels are as stated.
 
 **Status.** No safe large sub-step was identified in G1 without a source-level redesign of the companion. Executing
 the downloaded generator to obtain sub-step marks was blocked by the session's permission policy.
+
+## 6. Option C: the GF(2^24) 99-AND multiplier (2026-11-10)
+
+**Result: no lower-rank formula was found. Nothing was built; v100 is unchanged.**
+
+### 6.1 Kernel identity (MEASURED from v100; scripts `mulc/extract_kernel.py`, `symsim.py`, `analyze_tensor.py`)
+
+- **Instances.** There are 6 tagged `multiply v` instances in extract and 6 in unextract. Their canonical op
+  sequences are identical: 6,393 ops = 6,294 CX + 99 CCX, and no other op types.
+- **Qubits.** Each instance touches exactly 72 qubits: x = q48–71 (syndrome words 4–5), y = q72–95 (words 6–7), and
+  z = 24 ancillas. **There are no temporaries and no HMR.**
+  - The linear forms are built in place on x and y by CX.
+  - Each AND is XORed straight into z, with CX fan-out for multi-bit outputs.
+  - x and y are restored exactly.
+- **Map.** The kernel computes z ^= B(x, y).
+  - Symbolically, B is bilinear (0 non-bilinear monomials) and symmetric.
+  - It has no zero divisors (0 of 2,000 random x give a singular left-multiplication). So it is GF(2^24)
+    multiplication up to fixed linear basis changes on the three registers. The register qubit orders differ,
+    which is why the raw tensor is not associative in qubit order.
+- **Formula.** The 99 rank-one terms read off the circuit are all symmetric, L_r(x)·L_r(y)·v_r. They reproduce B
+  exactly on all 576 basis pairs.
+- **Tower.** The terms form 11 consecutive blocks of 9. Each block's 9 masks span exactly 4 dimensions, and so do its
+  9 output vectors.
+  - This **confirms GF(16)^6: 11 evaluations (points 0…9 of GF(16), plus ∞) × GF(16) multiplication at rank 9
+    (GF(4)^2, 3 × 3)**. It matches the source docstring of `exp/mul99/kernels.py`.
+- **Workspace.** Zero extra qubits. A replacement formula of the same in-place form would be Q-neutral. Per the
+  source, the chain-step instances (`mul24_xor99`) are the same tensor in a CNOT-related "extension" basis (ESTIMATE,
+  not extracted).
+- **Usage.** About 769 instances run in extraction per shot, ≈ 76k T, so each AND saved is worth ≈ 770 T (0.19%).
+
+### 6.2 Search (derivations, not a literature lookup; arXiv is unreachable here)
+
+Inner layers are provably optimal:
+- μ_16(6) = 11 = 2·6 − 1. That is the general lower bound, attained because 6 ≤ 16/2 + 1.
+- μ_2(4) = 9 is the known exact value.
+
+**So the tower cannot improve layer by layer.** Alternative decompositions, using the best constructions I could
+build:
+
+| decomposition | inner rank | outer rank | total |
+|---|---:|---:|---:|
+| GF(16)^6 (current) | μ₂(4) = 9 | 11 | **99** |
+| GF(4)^12, CRT over GF(4): 5 linear + 6 quadratic + 2 cubic places | 3 | 33 | 99 |
+| GF(4)^12, elliptic CCMA, any trace t ∈ [−4, 4] (N1 + 2·N2 limits) | 3 | ≥ 33 | ≥ 99 |
+| GF(4)^12 costed directly at GF(2) level (linear 3/deg, quadratic 4.5/deg, cubic 5/deg, need 23 deg) | — | — | 99 minimum |
+| GF(8)^8, CRT: 9 linear + 3 quadratic | 6 | 18 | 108 |
+| GF(8)^8, elliptic CCMA (N1 ≤ 14) | 6 | ≥ 17 | ≥ 102 |
+| GF(64)^4 | 15 | 7 | 105 |
+| GF(256)^3 | 24 | 5 | 120 |
+| GF(4096)^2 (Karatsuba) | 42 | 3 | 126 |
+
+**Shared-operand idea, not pursued.** The corrected product h·(D²)_lo, h·(D²)_hi costs 84. The GF(4) analogue of a
+shared-operand product has rank 6 = 2 × 3 by JáJá's pencil theorem, so I found no evidence of a saving.
+
+**No SAT or flip-graph search was run.** The only sub-layers small enough to search are provably optimal, and a
+direct search for rank ≤ 98 on the 24 × 24 × 24 tensor is far beyond the timebox.
+
+**Open lead.** A genus ≥ 2 Chudnovsky construction, or a published bound μ₄(12) ≤ 32, would give ≤ 96 ANDs, saving
+≈ 2.3k T per AND-triple. That needs literature access.
