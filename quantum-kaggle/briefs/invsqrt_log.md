@@ -504,3 +504,34 @@ Not implemented within the timebox.
 
 ### Result
 No verified saving on 26ebf39d. Nothing built.
+
+---
+## v104 (26ebf39d): conditional fix-up block resynthesis, coverage report (Agent A), 2026-11-10
+
+Bar: 94,537.6. **Result: no verified saving. Nothing built.**
+
+### Where the mean conditional Toffolis are
+Measured by `/tmp/condfreq.py`: 65,536 random x, coin-randomised, execution frequency per gate.
+- 243 conditioned Toffoli-like gates, contributing **80.71 mean Toffolis**. The unconditioned depth-0 gates contribute about 1,150.
+- The largest outer conditional blocks are the **conditional-split pairs**.
+
+| outer block ops | condition | branch structure | mean Toffolis |
+|---|---|---|---|
+| 19358 / 19430 | b414 / ¬b414 | each branch re-runs a ~8-CCX carry chain with HMR-to-scratch erasure and a CCZ fix-up | 4.0 / 4.0 |
+| 20000 / 20121 | b308 / ¬b308 | ~12-CCX chain per branch | 5.7 / 6.0 |
+| 20997 / 21063 | b70003 / ¬b70003 | ~7–8-CCX chain per branch | 3.5 / 3.7 |
+| then about 20 blocks | — | 2–3 gates each | about 1.0 each |
+
+The branches are mutually exclusive with p = 1/2 each, so moving work between them leaves the mean unchanged unless a branch's chain itself gets shorter.
+
+### Innermost Clifford+Toffoli conditional blocks
+Scope: no nested condition, no HMR, R or Z_POW inside. Tools: `tools/invsqrt/fixup_scan.py` (sampled) and `fixup_exact.py` (exact).
+- **Count:** 77 blocks, covering 16.26 mean Toffolis.
+- **Test:** is the value change (out ⊕ in) affine in the block wires, and the phase quadratic, on the reachable patterns? A pass means every Toffoli becomes CNOT/CZ under the same condition.
+- **Exact run:** patterns over ALL x, union of 3 coin seeds, which is a sound superset since coins are independent of x. **0 hits.**
+- **Sampled pre-scan false positive:** the sampled scan (32,768 x, executing lanes only) reported 1 hit, CCZ q28 q23 q57 at op 9232 (frequency 0.0076, mean 0.008). Exactly, all 8 patterns of (q28, q23, q57) occur: 110 for 104 inputs and 111 for 88, coin-independent. So the phase is genuinely cubic.
+
+### Not covered (≈ 64 of the 80.7 mean conditional Toffolis)
+- Blocks with nested conditions or HMR inside: the conditional-split carry chains above, and the execute-once chains at ops 32768–35661.
+- A general window model with coin inputs ((state, coin) → (state, phase), with its own measurement schedule) was not implemented within the timebox.
+- The next step would be to resynthesise one branch of the b308 split (12 CCX, mean 6.0) as a carry-recomputation problem.
