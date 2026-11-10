@@ -18,6 +18,8 @@ from kmx_analyze import load
 MAXX = 3133452; W = 22
 TOFF = ('CCX', 'CSWAP', 'CCZ')
 OKOPS = ('CX', 'X', 'SWAP', 'CCX', 'CSWAP', 'CZ', 'Z', 'CCZ')
+import os
+TMAX = int(os.environ.get('TMAX', '4'))
 
 
 def record_states(ops, xs, seed, at):
@@ -76,24 +78,25 @@ def windows(ops, maxw):
         if op not in TOFF or D[s] != 0 or cond is not None: continue
         wires = set(a for a in args if a.startswith('q'))
         members = [s]; T = 1
+        dirty = set()            # wires touched by skipped ops since the window start
         k = s + 1
         while k < len(ops):
             op2, args2, cond2 = ops[k]
             qs = set(a for a in args2 if a.startswith('q'))
             if op2 in ('PUSH_CONDITION', 'POP_CONDITION'):
                 k += 1
-                # condition blocks: if any op inside touches window wires we stop (handled below)
                 continue
             if not (qs & wires):
-                k += 1; continue
+                dirty |= qs; k += 1; continue
             if D[k] != 0 or cond2 is not None or op2 not in OKOPS: break
             if len(wires | qs) > maxw: break
+            if (qs - wires) & dirty: break
             wires |= qs; members.append(k)
             if op2 in TOFF:
                 T += 1
                 res.append((s, list(members), sorted(wires), T))
             k += 1
-            if T >= 4: break
+            if T >= TMAX: break
     return res
 
 
