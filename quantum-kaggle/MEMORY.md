@@ -237,6 +237,8 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
 
 - 2026-11-10: Submitted mix2 (ref 58185878): invsqrt c6519219 (21.9533, fully verified under salt team-mx2-check) + dqi v100 + refit chem. Local score 25.2179.
 
+- 2026-11-10 12:00 UTC: mix2 (ref 58185878) scored **25.21797** (local matched exactly): rank 494 of 2,753. Top 100 needs 25.312; rank 300 needs 25.227. DQI options A (blocked by policy on running the downloaded generator) and C (multiplier 99 = GF(16)^6, 9×11, optimal within the tower) found no gain.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
