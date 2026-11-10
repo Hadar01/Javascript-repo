@@ -240,7 +240,7 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
 - 2026-11-10 12:00 UTC: mix2 (ref 58185878) scored **25.21797** (local matched exactly): rank 494 of 2,753. Top 100 needs 25.312; rank 300 needs 25.227. DQI options A (blocked by policy on running the downloaded generator) and C (multiplier 99 = GF(16)^6, 9×11, optimal within the tower) found no gain.
 
 - 2026-11-10 12:30 UTC:
-  - Submitted mix3 (ref 58201004), local score 25.2390:
+  - Submitted mix3 (ref 58201004), local score 25.2390. **Scored 25.23899: rank 187 of 2,756 (best so far).** Top 100 needs 25.312:
     - invsqrt 26ebf39d (v104, gengsr shifter): 21.9677, full official PASS.
     - dqi v100 e9f54be3: 65.2263.
     - chem marculera dfthc-c44-build 79bc97e7 (XOR codes): 11.2204, 2 salts PASS.
