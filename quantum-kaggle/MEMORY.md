@@ -216,6 +216,25 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Conclusion: the remaining invsqrt levers on the public file are small. Wait for the DQI profile before assigning
     the next research.
 
+- 2026-11-10 04:00 UTC:
+  - Rank 510 of 2,730 (25.14983). Thresholds: top 100 25.279, top 300 25.218.
+  - DQI profile done: briefs/dqi_profile.md, measured from the circuit's INFO_TAG stage marks.
+    - Split of T: extraction 39%, conversion 31%, synthesis 18%, scan 11%.
+    - The reverse passes cost 48.1k T more than the forward ones.
+    - Redesign #1: reuse D in the reverse extraction instead of re-running the scalar chain. Target −24k T,
+      which takes DQI to about 69.4.
+  - DQI failure stats (20 salts each plus a 1M-shot census) CORRECT our earlier choice:
+    - v95: p 4.2e-6, CI [2.2, 7.2]e-6, E[ratio] 65.094. It has a w=35 phase-error family.
+    - v100 (e9f54be3): p 2.9e-6, CI [1.3, 5.5]e-6, E[ratio] 65.140.
+    - Use v100 from now on.
+  - Public notebook maoxin123 "LB 25.218" (Apache-2.0, ChatGPT-assisted):
+    - invsqrt c6519219, 21.9533: CSWAPs cut 226→205 for +9 CCX. This is a coordinated rewrite that our
+      single-gate scans missed.
+    - Chemistry weights refit, 11.1997.
+    - Extracted to scratch mx2/ via scratch/extract_maoxin.py (no notebook code run).
+  - Assigned: DQI agent on redesign #1 (splice unextract); invsqrt agent on diffing and generalising the CSWAP
+    rewrite.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
