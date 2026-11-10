@@ -535,3 +535,61 @@ Scope: no nested condition, no HMR, R or Z_POW inside. Tools: `tools/invsqrt/fix
 - Blocks with nested conditions or HMR inside: the conditional-split carry chains above, and the execute-once chains at ops 32768–35661.
 - A general window model with coin inputs ((state, coin) → (state, phase), with its own measurement schedule) was not implemented within the timebox.
 - The next step would be to resynthesise one branch of the b308 split (12 CCX, mean 6.0) as a carry-recomputation problem.
+
+---
+## v104 (26ebf39d): conditional-split branch resynthesis, b308 / b414 / b70003 (Agent A), 2026-11-10
+
+Bar: 94,537.6 at Q = 62. **Result: no verified saving. Nothing built.**
+
+Tools: `tools/invsqrt/branch_spec.py`, plus scratch scripts for live profiles, pair tables and idle-wire tests.
+- `branch_spec.py` recomputes each branch on its executing lanes only: all x, 2 coin seeds, about 3.13M lanes.
+- Sampled GF(2) span tests use 16,384 lanes; any positive is re-checked on all lanes.
+- Positive controls behave as expected: c1 is quadratic in the entry wires; c6 is quadratic with c5 present and not without it; a random bit fails.
+
+### Exact specs (executing lanes, forced execution matches the parsed chain)
+Each branch is a Gidney adder.
+- **What it computes:** b_k ← a_k ⊕ b_k ⊕ c_k for every pair, and t ← t ⊕ c_n, with c_{k+1} = MAJ(c_k, a_k, b_k).
+- **Erasure:** the carries are erased by HMR, with fix-ups that are CZ or, after an early erase, CCZ.
+- **B = A plus a phase:** B (split bit = 1) additionally applies the phase (−1)^{t_old · c_n}.
+- **What the phase repays:** the kick of the overflow bit measured at 18748 (b414, q51), 18705 (b308, q57) and 18674 (b70003, q61). Our reading, not checked numerically: summed over a split bit's rows, these phases repay the measured top bit.
+
+| pair (A / B ops) | chain (cin; (a,b) pairs) → t | live at entry | A mean | B mean | early-erase fix-ups |
+|---|---|---|---|---|---|
+| b308 20000 / 20121 | q18; (36,54)(37,14)(38,55)(39,52)(42,22)(24,29)(59,45)(43,46)(44,30)(60,31)(15,58) → q47 | 53 | 11 CCX + CCZ@b299 = 5.75 | 11 + CCZ@b299 + CCZ@b63034 = 6.00 | A erases c5 early; B erases c1 and c5 early |
+| b414 19358 / 19430 | q18; (39,54)(42,14)(24,55)(59,52)(43,22)(44,29)(60,45)(15,46) → q30 | 53 | 8 CCX = 4.00 | 8 CCX = 4.00 | none (B peaks at 61, so its ancilla is free) |
+| b70003 20997 / 21063 | q41; (42,46)(24,30)(59,31)(43,58)(44,47)(60,56)(15,48) → q16 | 56 | 7 CCX = 3.50 | 7 + CCZ@b63024 = 3.75 | B erases c1 early |
+
+- **Slot arithmetic.** A needs n−1 carry slots; B needs n (the extra one holds the final product p for CZ(t, p) followed by CX(p → t)).
+  - b308: 9 free slots, so A must erase 1 carry early and B must erase 2.
+  - b70003: 6 free slots, so A erases none and B erases 1.
+  - b414: 9 free slots, so neither erases.
+- **Cost of an early erase.** Each costs one CCZ under a fresh coin: 0.5 per execution of the branch, 0.25 per shot.
+- **All 11 split pairs in 18.8k–21.2k:**
+  - Together they hold 37.75 mean Toffolis per shot (A 17.75, B 20.00).
+  - Early-erase fix-ups account for 3.75 of that. The B-only part (the extra slot for p) accounts for 2.25 (9 pairs × 0.25).
+
+### Constructions tested (all exact or sample-refuted on executing lanes)
+- **R0 — redundant live wire** (linear dependency among the entry wires, which would give a free ancilla): none, in all 6 branches.
+- **T1 — shorter chain** (some c_k linear in the entry wires plus lower carries): none, k = 1..n, all 6 branches.
+- **T2 / T2b — free early erase** (c_{k+1} quadratic without c_k):
+  - Tested against the entry wires, and against the wires actually present during the unwind (sums s_j for j ≥ k+1, t ⊕ c_n).
+  - No k, in any of the 6 branches.
+- **T3 / T3b — ancilla-free B** (t_old · c_n quadratic over the entry wires or over the end-of-branch wires): no, for all 3 targets.
+- **Alternative B constructions** (expected mean change per pair, against the current 0.25):
+
+| B construction | cost inside B | mean per pair | change |
+|---|---|---|---|
+| current: early erase, CCZ under a coin | 0.5 | 0.25 | — |
+| CCX + CCZ(t, a′, b′) | 1.0 | 0.5 | +0.25 |
+| CCX + CS†(a′, b′) via 3 T (S is free) | 0.75 | 0.375 | +0.125 |
+| dirty-ancilla CCX pair | 1.0 | 0.5 | +0.25 |
+| in-place Cuccaro MAJ for one slot | 1.0 | 0.5 | +0.25 |
+| recompute the early-erased carry | 1.0 at p = 1/2 | 0.25 | 0 |
+
+  The CS† row uses CC(XZ) = CZ(a,b) · S_t · CCX · CS(a,b) · S_t†.
+- **Hoisting the common chain out of the split:** the prefix does not shrink, and B still needs its own slot at the top, so there is no change.
+- **A free qubit for the whole split region.**
+  - Only 9 wires are untouched across 18750–21150: q11, q12, q13, q17, q19, q20, q25, q26, q49.
+  - None is linear or quadratic in the other live wires, at 18750 or at 21150.
+  - Jointly they take 332 of 512 patterns, so they do not compress to 8 wires.
+  - Going to Q = 63 would cost about 1,525 against at most about 217 saved (3.5 mean Toffolis × 62).
