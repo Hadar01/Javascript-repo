@@ -415,3 +415,27 @@ The rewrites tested (A–E) found no gain that beats cost 95,345.6. Nothing was 
 Folding the 2^-10 bit into the high pass would require adding a table-derived bit (with carry) at high-pass time. No construction was attempted within the timebox.
 
 **Conclusion.** These rewrites found no gain over c6519219 (cost 94,599.61 as claimed by maoxin123). Nothing built.
+
+---
+## Absorbing the top low-pass rotation(s) into the high-word data: exact check on c6519219, 2026-11-10
+
+**Measured** (exact over all 3,133,452 x; probes `probe_mx2*.npz`)
+
+| weight (half-turn) | inputs with l = 1 | all of them in | l a function of | collisions h∧l | addresses carrying l = 1, shared with |
+|---|---|---|---|---|---|
+| 2^-10 | 114 | x ≤ 252 (δ = 0) | **(address, shift a)**, not the address alone | 44 | 105 addresses, shared with 1,440,327 inputs x > 252 (shifts 0..6) |
+| 2^-11 | 373 | x ≤ 1008 | neither the address nor (address, a): δ ≠ 0 for some | 122 | 219 addresses, 2,777,584 inputs |
+| 2^-12 | 1,294 | x ≤ 4032 | neither | 383 | 255 addresses, 3,118,508 inputs |
+
+- **Possible saving.** Dropping the 2^-10 low-pass rotation and its drain step saves 7.19 + 1 Tof-eq, plus ≈ 0.2 from a slightly larger ε with 40 rotations: ≈ −8.4 Tof-eq. That would be cost ≈ 94,078 (ratio ≈ 22.07) if free.
+- **Option 1, add to the high-word table data.**
+  - The high pass phases H·2^a, so a data change ΔH at an address shifts the phase of every input sharing that address by ΔH·2^(a−18) turns.
+  - The minimal change that supplies 2^-11 turns at shift 7 adds ≥ 2^-18 turns (3.8e-6) at shift 0, to 1.44 M other inputs. The margin is 3.18e-12 turns.
+  - **Fails tolerance**, so it cannot be done through data alone.
+- **Option 2, a gated extra bit G = [a ≥ 7]·l(address, a), added into the high-pass stream at 2^-10.**
+  - Because of the 44 collisions, the add needs a carry. The carry propagates up to 5 weights (to 2^-5).
+  - The high pass runs at 61–62 live qubits throughout (275 ops at 62 between ops 8300 and 8720, including every op from the 2^-9 to the 2^-5 rotation), so the carry qubit adds +1 at the peak.
+  - Even with zero cost for computing G and the carries: 63 × (1525.80 − 8.4) = 95,596, which is above 94,599.6. **Loss.**
+- **2^-11 / 2^-12:** not functions of (address, shift), so they are not candidates for table absorption.
+
+**Conclusion.** Both absorption variants tested lose, so nothing was built. A route that avoided both the carry (the 44 collisions) and the shared-address perturbation was not found.
