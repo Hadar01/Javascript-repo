@@ -270,3 +270,38 @@ What is left in the reverse extraction:
 
 Pole-handling removal was checked and is negligible: v100 already uses CX pole gauges. Only 48 never-firing CSWAPs
 remain in extract and unextract.
+
+## 5. Option A, milestone 1: per-node glue accounting (v100, 2026-11-10)
+
+Source: `glueacct.py` on the coarse event streams `ev_extract.txt` and `ev_unextract.txt`. Static Toffoli-likes.
+Labels are as stated.
+
+| per homogeneous node (14 nodes, gi = 3…16) | forward (MEASURED) | reverse (MEASURED) |
+|---|---|---|
+| chain steps | (2gi) × {99 \| 99 + 84–90} | the same steps, mirrored |
+| normalisation | "paired": 2 × 99-T products, counted as chain steps, + ≈ 188 T + `inverse24` 170 | **G1 = 1,034–1,091 T + 75 CCZ + 96–120 CSWAP + 126 T in 42-T steps ≈ 1,330–1,410** |
+| zero flag + pole route | ≈ 122 T + 24 CSWAP | — |
+| local `inverse24` of the next group | — | ≈ 190 T (mirror of the forward 170) |
+| scalar return | — | (2gi − 2) × 99 |
+
+**Interpretation (ESTIMATE, from `exp/new/a01/companion.py` + `frozen_chart.py` + `retained_core_safe27.py`).**
+- **G1 = `normalize_three` + `pay_before_retire` + `restore_direct`.** The companion normalises three 24-bit values
+  (N, √L and the copied ratio R) in the high-component chart.
+  - Each value costs 4 × 42 T, the chart flag adds 12 + 36 CSWAP, and there are 3 `inverse12` (≈ 58 each).
+  - Two `linear_inverse_character` phase repayments supply the CCZ.
+  - R is what makes the single scalar return possible.
+- **The companion is a trade.** Replacing the old two-chain return (≈ 580 T of paired-normalisation glue plus a
+  second (2gi − 3) × 99 chain) by G1 + one chain pays off when (2gi − 3) × 99 > ≈ 830, i.e. for gi ≥ 6.
+  - For gi = 3, 4, 5 the old return would be cheaper by ≈ 530, 330 and 140 T: **≈ 1.0k T in total (0.25%)**.
+  - Building that needs the lineage's generator (forward token formats differ between the two designs).
+- **No pure mirror exists.** The forward glue (≈ 630 per node) includes the gauge measurement of D, so the reverse
+  cannot be a literal inverse of the forward (see §1).
+- **Gate-level scan of all CCX** over 65,536 shots (2 × official-distribution, plus w = 18 and w = 35 stress sets):
+  - 0 CCX are pure "uncompute-AND" (MBUC is already used everywhere).
+  - 487 CCX have a product equal to one control on all sampled shots (CCX → CX candidates).
+  - 397 CCX never fire.
+  - Neither class is proven structural. Removing a gate saves 1 T (0.00025%), while any violation with rate above
+    ~5e-9 per shot costs more through R. **Not recommended without proofs.**
+
+**Status.** No safe large sub-step was identified in G1 without a source-level redesign of the companion. Executing
+the downloaded generator to obtain sub-step marks was blocked by the session's permission policy.
