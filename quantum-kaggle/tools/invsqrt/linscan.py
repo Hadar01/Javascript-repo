@@ -45,7 +45,9 @@ def scan(path, ns=16384, seed=3):
     ops = load(path)
     nq = 1 + max(int(a[1:]) for _, args, _ in ops for a in args if a.startswith('q'))
     rng = np.random.default_rng(seed)
-    xs = np.sort(rng.choice(np.arange(1, MAXX + 1, dtype=np.uint64), ns, replace=False))
+    small = np.arange(1, ns + 1, dtype=np.uint64)          # all small x (large shifts: rare paths)
+    big = rng.choice(np.arange(ns + 1, MAXX + 1, dtype=np.uint64), ns, replace=False)
+    xs = np.sort(np.concatenate([small, big])); ns = len(xs)
     n = ns; nw = n // 64
     def pack(bits): return np.packbits(bits.astype(np.uint8), bitorder='little').view(np.uint64).copy()
     mask = pack(np.ones(n, dtype=np.uint8))

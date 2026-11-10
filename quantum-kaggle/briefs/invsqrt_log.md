@@ -390,3 +390,28 @@ The rewrites tested (A–E) found no gain that beats cost 95,345.6. Nothing was 
 **Correction of my delay-line conclusion (previous section).**
 - The "≈ log2(11) = 3.46 swaps per bit" figure was **not a valid bound**: it ignored stage ordering and the drain. c6519219 achieves 81/26 = 3.12 per rotation.
 - My single-gate scans could not find this because it is a coordinated reorder of the whole line.
+
+### Generalising the pattern to c6519219: rewrites tested, no build
+
+**Drain model.** Each stage costs its per-step price over its active steps, where active steps = input duration + delay, capped at the 26 low-pass steps.
+
+| network (c6519219) | Toffolis | rewrite tested | exact projected Δ |
+|---|---|---|---|
+| Low-pass delay line (stage order 1, 2, 4/8) | 81 | All stage orders in the drain model: (1,2,48) = (2,1,48) = 81; (1,48,2) = 84; (48,2,1) = 93 (that is v100). | 0 (c6519219 is at the model minimum) |
+| High-pass mux, lines 8368–8687 (select → shift 2 (q20) → shift 1 (q27)) | 69 | Reorder delay stages small-first. The high pass has **no drain**: residual buffer bits are phased with Clifford Z_POW on the buffer qubits (S† at start, S at end on q0, q2, q3: a ±θ trick that cancels on the x-data branch). Both orders are active on all 16 steps. | 0 |
+| Normalisation, 47 CSWAPs (start) and 49 (end) | 96 | Controlled interval reversals, not a stream, so there is no drain to skip. | not applicable |
+| Low-pass drain via the ±θ trick (rotate the residual buffer qubit directly) | 4 drain Toffolis on x-bit buffers q4–q7 | Needs a cancelling −θ rotation at the start: +1 rotation (7.19) − 1 Toffoli per step. | +6.2 per step (loss) |
+| All 1,393 unconditional Toffoli-like gates | — | **Global linear-equivalence scan** (`tools/invsqrt/linscan.py`): is the nonlinear term GF(2)-linear in the live qubits? Screening sample = all x ≤ 16384 plus 16384 random larger x. | 0 candidates |
+| Domain-aware scan | — | Never-fires, equals-a-control, or SWAP-equivalent (`kmx_analyze.py`, all x). | Only the 19 deeply nested conditional fix-up CCZs, which are not provable |
+
+**Observation, not built.** The top low-pass rotations serve only small x:
+
+| rotation (half-turn) | used only by |
+|---|---|
+| 2^-10 | x ≤ 252 (lz ≥ 14, so δ = 0 and the bit is a pure table function) |
+| 2^-11 | x ≤ 1008 |
+| 2^-12 | x ≤ 4032 |
+
+Folding the 2^-10 bit into the high pass would require adding a table-derived bit (with carry) at high-pass time. No construction was attempted within the timebox.
+
+**Conclusion.** These rewrites found no gain over c6519219 (cost 94,599.61 as claimed by maoxin123). Nothing built.
