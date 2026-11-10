@@ -156,7 +156,7 @@ Coarse window maxima, per 1.5M ops:
 
 ## 3. Failure analysis
 
-See the results block at the end (§3.4) for the final counts. Mechanisms MEASURED so far:
+Final counts are in §3.4. The failure mechanisms (MEASURED):
 
 1. **Low weight, deterministic, by design.**
    - Every shot with error weight w ≤ 17 fails (value error). Tested: 4,096 forced-weight shots each at
@@ -173,6 +173,55 @@ See the results block at the end (§3.4) for the final counts. Mechanisms MEASUR
      HMR randomness, so it does not depend on measurement outcomes.
    - Candidate classes (ESTIMATE, from the source's own disclosure): "rare degenerate pivot patterns, rare chance
      events such as an accidental zero in a 24-bit test". Root cause not yet isolated.
+   - **Localised (MEASURED)** for official shot 97682 (Bsweep-00, w = 27) by comparing mirror states for that shot.
+     - after `convert` = after `scan`: exact;
+     - after `synthesis` = after `unconvert`: exact;
+     - after `extract` ≠ after `unsynthesis`: 321 qubits differ.
+     
+     So **the synthesis round trip is not invertible for this input**. The source notes that "the forward synthesis
+     multiplies; only its undo divides", so this is presumably an identity-at-zero division meeting a zero divisor
+     (ESTIMATE). The other observed failures (w = 28, 30, 30) were not localised.
+   - The w = 28 census failure fails on both v95 and v100, so this family is shared.
+
+### 3.4 Results (MEASURED; pooled = 20 official salts + paired own census)
+
+Protocol.
+- **Official sweep.** Unmodified verifier, 20 salts `Bsweep-00`…`Bsweep-19` per circuit. Salt labels are shared, but
+  the circuit hashes differ, so the shot sets are independent.
+- **Own census.** 1,048,576 shots per circuit from my sampler, which uses the verifier's exact weight law. The census
+  is *paired*: both circuits see the same shots. It was run on my simulator, which is validated against the verifier
+  (same failure count on an exact replay).
+- **Pooling.** The two data sets are pooled. Both are draws of (input, measurement outcomes) from the scored
+  distribution.
+- **E[ratio].** K ~ Binomial(102,400, p), passed through the verifier's own `clopper_pearson_upper_bound` and
+  `repetition_overhead` (`expratio.py`, `final_stats.py`).
+- **Held-out salts.** `Bval-00`…`Bval-09` have never been run and are reserved for final validation.
+
+| | v95 (f277b054…) | **v100 (e9f54be3…, same file as public v101)** |
+|---|---|---|
+| mean T | 395,355.18 | **395,304.73** |
+| official, 20 salts: value / phase | 5 / 1 | 6 / 0 |
+| runs with 0 failures | 14 / 20 | 14 / 20 |
+| mean ratio over salts | 65.129 | 65.137 |
+| own census, 1,048,576 shots: value / phase | 3 (w = 17, 17, 28) / 4 (all w = 35) | 3 (the same shots) / 0 |
+| **pooled failures / shots** | 13 / 3,096,576 | **9 / 3,096,576** |
+| **p** (95% Clopper–Pearson) | 4.20e-6 [2.24e-6, 7.18e-6] | **2.91e-6 [1.33e-6, 5.52e-6]** |
+| expected failures per scored run | 0.43 | 0.30 |
+| **E[ratio]** at p̂ [CI ends] | **65.094** [65.151, 65.010] | **65.140** [65.186, 65.065] |
+
+Family split (v95):
+
+| family | v95 | v100 |
+|---|---|---|
+| w ≤ 17 (exact law, 100% fail) | 7.7e-7 | 7.7e-7 |
+| generic value (5 seen in 3.1M) | ≈ 1.6e-6 [0.5e-6, 3.8e-6] | shared, same order |
+| w = 35 phase (forced test: 15 / 151,552 w = 35 shots ⇒ 9.9e-5 per w = 35 shot × 0.0277) | 2.7e-6 [1.5e-6, 4.5e-6] | **absent**: 0 / 135,168 forced w = 35 shots |
+
+**Conclusions.**
+- **v100 is the base from now on.** It has lower T and no w = 35 phase family. Its E[ratio] is 65.140 against 65.094
+  for v95.
+- The "65.22 with 0 errors" headline of either file is a lucky draw: P(K = 0) is about 0.65 for v95 and 0.74 for
+  v100.
 
 ## 4. Top 3 redesign candidates (ranked by measured share)
 

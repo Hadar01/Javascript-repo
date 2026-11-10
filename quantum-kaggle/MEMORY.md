@@ -235,6 +235,8 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Assigned: DQI agent on redesign #1 (splice unextract); invsqrt agent on diffing and generalising the CSWAP
     rewrite.
 
+- 2026-11-10: Submitted mix2 (ref 58185878): invsqrt c6519219 (21.9533, fully verified under salt team-mx2-check) + dqi v100 + refit chem. Local score 25.2179.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)

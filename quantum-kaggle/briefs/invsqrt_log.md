@@ -364,3 +364,29 @@ A gain would need a non-linear recovery of the h_w window from the live state at
 The rewrites tested (A–E) found no gain that beats cost 95,345.6. Nothing was built.
 
 **Correction to my earlier estimate (step 2, "≈100 Toffolis, ≈ −1%"):** the line is 93 Toffolis, and nearly all of it is the information cost of muxing 11 shift values, done with vacated-bit buffers.
+
+---
+## maoxin123 c6519219 vs public v100 034c7c2a: diff analysis (Agent A), 2026-11-10
+
+**Totals:** static Toffolis 1405 → 1393 (−12). CSWAP 226 → 205, CCX 1086 → 1095, CCZ 93 = 93. Still 62 qubits and 41 rotations.
+
+| region (v100 lines) | content | v100 | c6519219 | Δ |
+|---|---|---|---|---|
+| 16123–16335 → 16114–16305 | **low-pass delay line** | 89 CSWAP + 4 CCX = 93 | 70 CSWAP + 11 CCX = 81 | **−12** |
+| 15672–16122 | arithmetic tail before the low pass ("q25 merge") | 3 CSWAP + 53 CCX | 1 CSWAP + 54 CCX | −1 |
+| 9111–9145 | arithmetic | 2 CCX | 1 CCX | −1 |
+| 18192–18320 | reverse rows | 0 | 1 CCX | +1 |
+| 8366–8687 (high-pass mux), 18564–19048, 36278 | reordered or re-registered, same counts | — | — | 0 |
+
+**The delay-line rewrite**
+1. **Stage order reversed.** v100 streams each bit through the 4/8 bank first, then the shift-2 stage (q27), then shift-1 (q18). c6519219 goes shift-1 → shift-2 → 4/8.
+2. **Emptied stages are skipped in the drain.** After the last source (rotation 19), the shift-1 stage empties after 1 step and shift-2 after 2, so their gates are simply omitted. The 4/8 bank drains last at 1 Toffoli per step.
+   - Per-rotation cost of the last 7 rotations: v100 3,4,4,4,3,4,4 = 26; c6519219 4,3,3,1,1,1,1 = 14.
+3. **The last swap out of an emptied buffer becomes a move.** `CCX(flag, buf, q28); CX(q28, buf)` into q28, which is known zero once the source has stopped. It costs the same Toffoli, but leaves the buffer clean, so no later stage has to touch it. This is where CSWAPs became CCX.
+4. **Buffers re-assigned.** The 4/8 banks now use vacated x bits q4–q7, plus q9, q40, q41, q50.
+
+**Why it is still correct.** When a stage's flag is set, its buffer holds stream bits, and those bits leave through the move. When the flag is clear, the move's CCX does not fire, and the buffer keeps its x-bit data (vacated bits are 0 exactly when the flag is set). Once a buffer is empty and no input arrives, the stage acts as the identity.
+
+**Correction of my delay-line conclusion (previous section).**
+- The "≈ log2(11) = 3.46 swaps per bit" figure was **not a valid bound**: it ignored stage ordering and the drain. c6519219 achieves 81/26 = 3.12 per rotation.
+- My single-gate scans could not find this because it is a coordinated reorder of the whole line.
