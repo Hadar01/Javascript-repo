@@ -267,7 +267,7 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - chem is the marculera build again (11.2204).
 
 - 2026-11-10 ~20:00 UTC:
-  - Submitted mix4 (ref 58212324), local score 25.2937:
+  - Submitted mix4 (ref 58212324), local score 25.2937. **Scored 25.29371: rank 246 of 2,785 (best score so far).** Top 100 needs 25.354:
     - invsqrt a15b0d73 (alexchilton, v107): 22.1109, full official PASS.
     - dqi v100: 65.2263.
     - chem marculera: 11.2204.
