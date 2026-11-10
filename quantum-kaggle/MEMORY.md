@@ -266,6 +266,21 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - invsqrt a15b0d73 (alexchilton) and dqi 9fcda0c1 are new; verification and a 10-salt sweep are running.
     - chem is the marculera build again (11.2204).
 
+- 2026-11-10 ~20:00 UTC:
+  - Submitted mix4 (ref 58212324), local score 25.2937:
+    - invsqrt a15b0d73 (alexchilton, v107): 22.1109, full official PASS.
+    - dqi v100: 65.2263.
+    - chem marculera: 11.2204.
+  - v107 dqi 9fcda0c1 failed in 6 of 10 salts (6/1.024M shots, p about 5.9e-6), worse than v100.
+    DQI candidates so far, by p:
+
+    | DQI file | p |
+    |---|---|
+    | v100 | 2.9e-6 |
+    | v104 | 3.8e-6 |
+    | v95 | 4.2e-6 |
+    | v107 | 5.9e-6 |
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
