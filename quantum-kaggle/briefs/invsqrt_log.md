@@ -470,3 +470,37 @@ Folding the 2^-10 bit into the high pass would require adding a table-derived bi
 - Mean-cost conditional splits.
 - Windows wider than 8 wires.
 - SAT search: pycryptosat was not needed for the classes above, which reduce to exhaustive GF(2) linear algebra.
+
+---
+## v104 (26ebf39d) pass: diff, shifter port, mean-cost scans (Agent A), 2026-11-10
+
+### 1. Diff 26ebf39d vs c6519219
+The only changed region is the forward normalisation shifter (lines 94–260 → 94–496).
+- CSWAP 47 → 46 (**−1 Toffoli**), with CX 330 / X 22 around it.
+- **gengsr's idea:** a single control wire q48 is re-targeted by CNOTs between almost every CSWAP, so **each CSWAP has its own control function of lz**. These are XORs of the thermometer-chain bits, which are free.
+  - A control only has to be right on the lz values where its two positions can differ; elsewhere it is a don't-care.
+  - That freedom gives a 46-swap reversal network: rev[0..12], rev[0..18] scattered, rev[0..20], rev[1..20], (1,4), rev[5..20], (14,20), (15,20).
+- The high-pass mux is a stream (select + shift-2/shift-1 delay stages), not a reversal network, so the idea does not transfer there.
+
+### Port to the un-normalisation network (49 CSWAP + 8 CCX), `tools/invsqrt/port_shifter.py` (exact, all x)
+- **Available control functions at the end.** The lz-functions live at the start of the end network are lz parity and the thresholds [lz ≥ 2], [lz ≥ 4], …, [lz ≥ 20], plus [lz ∈ {8,9}] and its complement. Their span has dimension 12, against 22 for arbitrary functions of lz.
+- **Controls that fail.** For gengsr's inverse network, **17 of 46** per-CSWAP controls are not in that span on their care sets.
+- **Adding products.** Greedily adding products of two available functions (1 AND each), 5 added products still leave 2 controls inexpressible. That means ≥ 6 extra ANDs to save ≤ 3 CSWAPs.
+- **Layout.** The end network also uses a different layout (x_n bits 14–20 held in scratch qubits q57, q27, q61, q51, q28, q40; bit 15 encoded).
+
+**Port: net loss in the form tested. Not built.**
+
+### 2. Mean-cost conditional moves (`tools/invsqrt/condmove.py`, `/tmp/blockscan.py`)
+- **Unconditioned CCX whose product is read only under classical conditions.**
+  - Scanned until the target's next unconditional write or erase, requiring a common condition bit across all reads.
+  - 1 candidate (op 19177, q23 = OR(q27, q21)). It is read unconditionally as the control of `CSWAP q23 q18 q3` at op 19330, so **0 real candidates**.
+  - A first, looser version of the scanner reported 17 candidates. All of them are consumed in both branches of a b414/b308/b70003 split.
+- **Conditional blocks.** There are 112 top-level conditional blocks with Toffolis: 236 conditional Toffolis on 60 distinct bits.
+  - Repeated control pairs occur only in 12 "execute-once" chains (`PUSH b_once; PUSH b_coin; CCX …; POP; POP; BIT_STORE0 b_once if b_coin`, ops 32768–35661). Those are already deduplicated by design.
+  - No merge was tested beyond this.
+
+### 3. Windows through HMR plus fix-up blocks
+Not implemented within the timebox.
+
+### Result
+No verified saving on 26ebf39d. Nothing built.
