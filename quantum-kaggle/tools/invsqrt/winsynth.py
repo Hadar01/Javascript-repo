@@ -199,11 +199,31 @@ def main(path, out, maxw=6):
             full = (1 << P) - 1
             forms = fl + [f ^ full for f in fl]
             need = set(r for r in rob if r)
-            if quad_phase and len(need) <= 1:
+            if quad_phase and len(need) <= 1 and T >= 2:
                 for f, g in itertools.combinations(forms, 2):
                     rg = redL(f & g)
                     if rg and need <= {rg}:
                         best = 1; break
+            if best is None and quad_phase and T >= 3:
+                # several independent products: need-space spanned by product residuals
+                nb = []
+                for r in need:
+                    for b in nb: r = min(r, r ^ b)
+                    if r: nb.append(r); nb.sort(reverse=True)
+                d = len(nb)
+                if 1 <= d <= T - 1:
+                    def inS(v):
+                        for b in nb: v = min(v, v ^ b)
+                        return v == 0
+                    avail = []
+                    for f, g in itertools.combinations(forms, 2):
+                        rg = redL(f & g)
+                        if rg and inS(rg): avail.append(rg)
+                    ab = []
+                    for r in avail:
+                        for b in ab: r = min(r, r ^ b)
+                        if r: ab.append(r); ab.sort(reverse=True)
+                    if len(ab) == d: best = d
             has_ccz = any(ops[k][0] == 'CCZ' for k in members)
             if best is None and affine_out and has_ccz:
                 for f, g, h in itertools.combinations(fl, 3):

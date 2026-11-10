@@ -439,3 +439,34 @@ Folding the 2^-10 bit into the high pass would require adding a table-derived bi
 - **2^-11 / 2^-12:** not functions of (address, shift), so they are not candidates for table absorption.
 
 **Conclusion.** Both absorption variants tested lose, so nothing was built. A route that avoided both the carry (the 44 collisions) and the shared-address perturbation was not found.
+
+---
+## Window and merge resynthesis search on c6519219: coverage report (no saving found), 2026-11-10
+
+**Result: no verified saving.** Nothing was built.
+
+### Tools (all in `tools/invsqrt/`)
+- `groups.py`, `pairmerge.py`, `triplemerge.py`, `winsynth.py`, `linscan.py`.
+- Reachable-state samples:
+  - group/merge scans: all x ≤ 16384, plus 16384 random larger x, × 2 coin seeds;
+  - window scan: all x ≤ 4096, plus 4096 random, × 2 seeds.
+- Every hit is meant to be re-checked exactly over all 3,133,452 x.
+
+### Coverage
+
+| search | candidates | test | hits |
+|---|---|---|---|
+| CCX groups into one target (target not read in between; CX into target allowed) | 53 groups with ≥ 2 CCX, sizes 2–6 | **pair 2→1**: p_i ⊕ p_j ⊕ l·m in the span of all live wires, with l, m over span{4 factors, 1}; 196 pairs testable (15 had factors not live at either op) | 0 |
+| same groups | 150 triples (141 testable) | **triple 3→2**: exhaustive over reachable coordinate patterns of the 6 factors (60–64 of 64 patterns occur, so almost no don't-cares) | 0 |
+| single gates | all 1,393 unconditioned Toffoli-like gates | nonlinear term GF(2)-linear in the live qubits, i.e. replaceable by CNOT/Z | 0 |
+| window resynthesis, ≤ 6 / 7 / 8 wires | windows start at each of the 1,150 depth-0 unconditioned Toffolis; 484 starts reach ≥ 2 Toffolis before a boundary (HMR, conditioned op, condition block, Z_POW, a dirty wire). In total 647 windows: T = 2: 484, T = 3: 161, T = 4: 2 | exact map + phase on reachable patterns. Tests: T → 0 (affine map, quadratic phase); T → 1 (one CCX with fan-out, or one CCZ); T → T−1 independent products | 0 |
+| domain-aware scan, all x | — | never fires / equals a control / SWAP-equivalent | only the 19 nested conditional fix-up CCZs (not provable) |
+
+**One false hit** (window at op 92, 2 → 1) came from a window-walk bug: a wire joined the window after skipped ops had modified it. The exact all-x pattern table exposed it, and the walk now rejects such "dirty" joins.
+
+### Not covered
+- Windows that cross HMR erasures and their conditional fix-up blocks. The window walk stops there, which is where most of the remaining 666 starts end.
+- Dependent multi-Toffoli resynthesis (T' ≥ 2 with chained products).
+- Mean-cost conditional splits.
+- Windows wider than 8 wires.
+- SAT search: pycryptosat was not needed for the classes above, which reduce to exhaustive GF(2) linear algebra.
