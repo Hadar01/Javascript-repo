@@ -281,6 +281,21 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     | v95 | 4.2e-6 |
     | v107 | 5.9e-6 |
 
+- 2026-11-11, DQI sprint (supervisor-approved):
+  - **Generator.** Reviewed and pinned (briefs/dqi_generator_review.md), then run in a sandbox with no network, a
+    read-only source, a cleared environment and caps.
+    - Reproduced 7bd10fca byte-exact.
+    - Official verifier, 3 fresh salts: PASS, mean T 403,503.
+    - Gap to v100: 8,198 mean T.
+  - **FIRST OWN VERIFIED IMPROVEMENT: DQI C1** (sha ca59beb8…), built by tools/dqi/splice/build_c1.sh, rebuild
+    byte-exact. It is v100 with the generator's convert…unconvert block, joined by an exact affine CNOT bridge
+    (rank 842).
+    - mean T 393,390 (−1,914.5), Q 892.
+    - Over 15 equal-budget salts (10 + 5 hold-out): C1 5 failures, v100 8.
+    - p(C1) 3.5e-6 (CI 1.5–6.9e-6). E[ratio] 65.439, against 65.118 for v100.
+  - Submitted mix5 (ref 58236986): C1 + invsqrt a15b0d73 + marculera chem.
+    Local score 25.3347 if the public draw has 0 failures, 25.2960 if it has 1.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
