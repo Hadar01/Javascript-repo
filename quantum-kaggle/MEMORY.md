@@ -314,6 +314,17 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - Width narrowing at ≥640 T is above the +400 target but below the ~886 break-even, so it is unattractive under
       that budget, not shown unprofitable. Archived.
 
+- 2026-11-11 fusion sprint, day-1 checkpoint: outcome (B), no day 2.
+  - Base a15b0d73 has 864 measurements.
+    - Correction clusters (mean T): split pairs 36.5, block-boundary carries ~20, speculative chain ~10.4,
+      unlookup chains 9, delay lines 8, un-normalisation 4.
+  - 6 candidate classes were priced: keep-vs-recompute, deferring fix-ups, Clifford replacement, merging fix-ups,
+    split-pair overhead, boundary fix-ups.
+  - Every cheaper crossing found needs a qubit at ops where 62 are already live, or a non-Clifford phase on the
+    reachable states.
+  - A ≥1% gain would need a structural change that frees one qubit across ops 16.3k–22k.
+  - This covers the examined boundaries only; it is not an impossibility result. Log: briefs/invsqrt_log.md.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)

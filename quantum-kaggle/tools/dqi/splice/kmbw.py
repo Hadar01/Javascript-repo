@@ -9,10 +9,14 @@ class Cols:
     def append_slice(self, d, a, b, bitmap=None):
         """Append ops [a,b) of parsed circuit d; optional bitmap: np array old_bit -> new_bit for b0/bc."""
         op = d['op']
-        nq = (op >> 4) & 3; hb = (op & 0x40) != 0; hc = (op & 0x80) != 0; it = op == 6
-        def rng(mask):
-            c = np.cumsum(mask); s = int(c[a - 1]) if a > 0 else 0; e = int(c[b - 1]); return s, e
-        s3, e3 = rng(nq == 3); s2, e2 = rng(nq == 2); s1, e1 = rng(nq == 1); sb, eb = rng(hb); sc, ec = rng(hc); st, et = rng(it)
+        def rng(f):   # operand-array offsets of ops [a,b) for category predicate f (memory-light: counts only)
+            s = 0; CH = 1 << 24
+            for i in range(0, a, CH): s += int(np.count_nonzero(f(op[i:min(a, i + CH)])))
+            e = s
+            for i in range(a, b, CH): e += int(np.count_nonzero(f(op[i:min(b, i + CH)])))
+            return s, e
+        s3, e3 = rng(lambda x: ((x >> 4) & 3) == 3); s2, e2 = rng(lambda x: ((x >> 4) & 3) == 2); s1, e1 = rng(lambda x: ((x >> 4) & 3) == 1)
+        sb, eb = rng(lambda x: (x & 0x40) != 0); sc, ec = rng(lambda x: (x & 0x80) != 0); st, et = rng(lambda x: x == 6)
         self.op.append(op[a:b].copy())
         for k in range(3): self.qqq[k].append(d['qqq%d' % k][s3:e3].copy())
         for k in range(2): self.qq[k].append(d['qq%d' % k][s2:e2].copy())

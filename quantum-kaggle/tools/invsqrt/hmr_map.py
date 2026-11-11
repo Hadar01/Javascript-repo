@@ -35,6 +35,7 @@ def main(path, out, n=1 << 16, seed=3):
     stack = [(full, frozenset(), None)]                # (active mask, provenance of conditions, innermost cond prov)
     pc = lambda v: int(np.unpackbits(v.view(np.uint8)).sum())
     H = {}                                              # hmr op -> record
+    CT = []                                             # conditional Toffoli-like gates
     pending = {}                                        # value hash -> hmr op (reconstruction search)
     hv = lambda v: hashlib.blake2b(v.tobytes(), digest_size=12).digest()
     for k, (op, args, cond) in enumerate(ops):
@@ -53,6 +54,7 @@ def main(path, out, n=1 << 16, seed=3):
             f = pc(act) / n
             last = max(inner)
             r = H.get(last)
+            if op in TOFF: CT.append(dict(op=k, freq=f, inner=sorted(inner), outer=sorted(allprov - inner)))
             if r is not None:
                 if op in TOFF: r['fix_toff'] += f; r['fix_toff_ops'].append(k)
                 elif op not in ('BIT_INVERT', 'BIT_STORE0', 'BIT_STORE1'): r['fix_cliff'] += 1
@@ -99,6 +101,7 @@ def main(path, out, n=1 << 16, seed=3):
                         if H[h0]['recon'] is None: H[h0]['recon'] = dict(op=k, wire=w, gate=op, depth=len(stack) - 1)
     recs = [H[k] for k in sorted(H)]
     json.dump(recs, open(out, 'w'))
+    json.dump(CT, open(out.replace('.json', '_ct.json'), 'w'))
     tot = sum(r['fix_toff'] for r in recs)
     print('HMR', len(recs), 'zero-erase', sum(r['zero'] for r in recs), 'conditioned', sum(r['conditioned'] for r in recs),
           'with Toffoli fix-up', sum(1 for r in recs if r['fix_toff'] > 0), 'mean fix-up Toffolis %.2f' % tot)

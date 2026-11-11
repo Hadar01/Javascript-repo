@@ -593,3 +593,84 @@ Each branch is a Gidney adder.
   - None is linear or quadratic in the other live wires, at 18750 or at 21150.
   - Jointly they take 332 of 512 patterns, so they do not compress to 8 wires.
   - Going to Q = 63 would cost about 1,525 against at most about 217 saved (3.5 mean Toffolis × 62).
+
+---
+## Measurement-crossing search on a15b0d73 (alexchilton, 93,925.3), day-1 checkpoint (Agent A), 2026-11-11
+
+**Verdict: (B).** The boundaries examined offer no feasible gain at Q = 62. Nothing was built.
+
+### What changed from 26ebf39d
+- **Totals:**
+  - Mean Toffolis go from 1229.71 to 1219.83 (−9.88).
+  - The static maximum goes from 1392 to 1381.
+  - The rotations are unchanged: 41, ε = 2.43e-13.
+  - Unconditioned static Toffolis go from 1149 to 1128.
+  - Conditioned mean Toffolis go from 80.71 to 91.81.
+- **Edits:**
+  - All 204 CSWAPs are gone. They became CCX moves: in the shifter, in the high/low-pass muxes, and in the un-normalisation, which now ends with 8 HMR + CCZ fix-ups worth 4.0 mean.
+  - A speculative measurement chain was added at 22222–22263: q44, q43, q59, q24 and q42 are measured until the first coin = 1, and the q60 accumulator only runs when a coin fired. This repays at 23783–23830.
+  - The third small b414 split pair was removed.
+  - The 18.2k region was rewritten (150 → 29 lines).
+- **Split pairs:** the 10 remaining split pairs are identical to the 26ebf39d specs, shifted by −61 ops after 19.0k. The branch analysis of 2026-11-10 therefore still applies.
+
+### Measurement-boundary map
+Tools: `tools/invsqrt/hmr_map.py` (65,536 random x plus coins; it reproduces the official mean of 1219.8). Totals: 864 HMRs, 22 zero erases, 155 conditioned, 86 with Toffoli fix-ups.
+
+| stage (ops) | HMR | unconditioned static Toffolis | conditioned mean Toffolis |
+|---|---|---|---|
+| normalisation 0–500 | 20 | 66 | 0 |
+| table XAG 500–8400 | 13 | 167 | 0 |
+| high pass and its delay-line fix-ups 8400–9320 | 27 | 65 | 1.99 |
+| pre-rows 9320–12000 | 20 | 30 | 0 |
+| forward rows 12000–16280 | 278 | 332 | 0 |
+| low pass and its delay-line fix-ups 16280–18560 | 38 | 87 | 5.97 |
+| reverse rows and split pairs 18560–25300 | 420 | 324 | 70.84 |
+| CZ-only phase repair 25300–32700 | 8 | 0 | 0 |
+| execute-once unlookup chains 32700–35700 | 9 | 0 | 8.99 |
+| un-normalisation 35700–36800 | 31 | 57 | 4.01 |
+
+**Ranking (correction plus reconstruction, mean Toffolis):**
+
+| measurement cluster | correction mean | what it pays for |
+|---|---|---|
+| Split-pair HMRs for b308, b414, b70003 (18662, 18705, 18631) | 13.0 + 11.0 + 9.0 | Overflow-bit kicks repaid inside 10 split pairs. The pairs total 36.5 per shot; the B-only overhead is 2.0. |
+| 18 reverse-row block-boundary carries (18632–22158) | ≈ 20.0 | 1.0 or 1.5 each: recompute one carry by CCX, then a CCZ, under the coin |
+| Speculative chain (22222–22263) plus its re-measure (23830) | ≈ 10.4 | — |
+| Unlookup execute-once chains (9 HMRs) | 9.0 | Shared AND terms are already computed at most once |
+| Low-pass delay line (26 HMRs) | 6.0 | — |
+| End of un-normalisation (8 HMRs) | 4.0 | — |
+| High-pass delay line (15 HMRs) | 2.0 | — |
+
+**Reconstruction.**
+- The large one is by design: the reverse rows recompute the forward rows' carries (324 Toffolis against 332 forward).
+- Erase → reconstruct pairs within 4,000 ops (`recon_scan.py`, exact check in scratch `br/recon_exact.py`):
+  - 72 were found on the sample, 22 of them with slack on the sample.
+  - On all x, 14 of the 22 were erasures of a value already linear in the live wires, so there is nothing to save.
+  - The other 8 are real: ops 16189–16238 → 18510–18553, 8 CCX.
+
+### Candidates priced (Toffolis saved / added / extra workspace at live = 62 / rotations)
+1. **Keep the 8 low-pass-erased values instead of recomputing them at 18.5k.**
+   - Saves 1.0 each, adds 0, rotations 0.
+   - Each kept value needs +1 qubit at 193 ops where the exact live count is 62 (all x, 2 seeds, from 16342 onward, inside the low pass). **Infeasible.**
+2. **Defer a costly fix-up to a later point where the erased value is linear or quadratic in the live wires** (`kick_defer.py`; 65 unconditioned HMRs with Toffoli fix-ups, linear test at every depth-0 op, quadratic test on a 500-op grid).
+   - Only 3 hits on the sample:
+     - 8821 (high pass): its value is quadratic at op 19000. But it is 1 of 15 HMRs sharing one fix-up cluster, so deferring it alone removes no Toffoli.
+     - 16598: 0.001 mean.
+     - 16603: a sample artifact (its value is zero on the sample).
+   - **Saving ≈ 0.**
+3. **Clifford reduction of any CCZ or CCX against all live wires** (`cond_quad.py`, 1,373 gates).
+   - A random sample gave 93 hits; all are rare-lane artifacts. A stratified sample gave 29 hits, all in deep execute-once nests.
+   - The 7 largest were re-tested exactly on all x (scratch `br/quad_exact.py`): **all refuted.**
+4. **Merge fix-ups on related coins.**
+   - Fix-ups that share controls (q23·q28, q18·q23, q27·q23) are the execute-once chains. Their cost of 1 − 2^-k already equals one merged CCZ.
+   - The remaining early-erase CCZs under independent coins have disjoint cubic factors, so the saving 0.25·(c1 + c2 − c12) is 0.
+5. **Fold the split-pair B overhead (2.0) into an existing block.** Yesterday's tested alternatives cost +0.125 to +0.25 per pair.
+6. **Block-boundary fix-ups (≈ 20).**
+   - Keeping c_{k−1} needs a slot through the row, and the rows peak at 62.
+   - None of these values reappears later in linear or quadratic form, so deferral is not possible.
+
+None of the candidates touches the rotations.
+
+**Why no gain.** Every cheaper crossing found needs either one more live qubit at ops where live = 62 (the low pass, the row peaks, the B-branch peaks), or a phase that is not Clifford on the reachable states.
+- A 1% gain at Q = 62 would need a structural change that frees a qubit across 16.3k–22k.
+- Yesterday's idle-wire test (9 idle wires, 332 of 512 patterns) and today's exact live profile both rule out the obvious ways to do that.
