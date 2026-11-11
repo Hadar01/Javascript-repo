@@ -325,6 +325,16 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - A ≥1% gain would need a structural change that frees one qubit across ops 16.3k–22k.
   - This covers the examined boundaries only; it is not an impossibility result. Log: briefs/invsqrt_log.md.
 
+- 2026-11-11 evening: **DQI C2** (sha 3152f1dd…) = C1 plus the extract/unextract blocks of public cd71c482 (team "i want to run gemma 9b").
+  - Built by tools/dqi/splice/build_c2.sh. No bridge was needed: the boundary states are bit-identical.
+  - mean T 392,453 (−936.6 vs C1), Q 892.
+  - Census (1,048,576 shots): the same 3 failing seeds as C1. Stress sets w = 18–35 (172k shots): 0 failures.
+  - Official sweeps, equal budget on Cx-00…14: C2 4 failures (all phase), C1 5. Not demonstrated different.
+  - E[ratio]: C2 65.624, C1 65.449.
+  - Submitted mix6 (ref 58249948): local score 25.3548 at k=0, 25.3161 at k=1.
+  - Fusion sprint ended at the day-1 checkpoint with outcome (B). Awaiting the supervisor's call on the
+    one-qubit structural change.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
