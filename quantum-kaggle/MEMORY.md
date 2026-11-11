@@ -295,6 +295,10 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - p(C1) 3.5e-6 (CI 1.5–6.9e-6). E[ratio] 65.439, against 65.118 for v100.
   - Submitted mix5 (ref 58236986): C1 + invsqrt a15b0d73 + marculera chem.
     Local score 25.3347 if the public draw has 0 failures, 25.2960 if it has 1.
+    **It scored 25.33469 (the 0-failure draw): rank 166 of 2,832, our best.** Top 100 now needs 25.405.
+  - Width track closed within the tested routes; see dqi_profile.md §9:
+    - the generator's ceiling knobs are already set to 891, and it still peaks at 892;
+    - C1 has 487 moments at 892 qubits, 320 of which have no cheap fix.
 
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
