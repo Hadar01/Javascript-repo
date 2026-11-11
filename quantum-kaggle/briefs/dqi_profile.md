@@ -423,3 +423,62 @@ Checks:
 Credits: the block is from atakanaldemir/qcc-c44-five-helper-release-sources v1 (Apache-2.0; SomeJoint, Atakan
 Aldemir, yoyobar, Ali Haydar Özdağ, manwithacat and the lineage in its CREDITS). The host is public v100 (lineage
 credited in the heliosli and kirilltym notebooks). Notices are retained.
+
+## 9. Structural step: can Q drop to 891? Step-1 estimate (2026-11-11). Result: NO within budget
+
+The budget was Q ≤ 891 everywhere, at most +400 mean T against C1 (break-even +886), and failure rate unchanged.
+
+### What the generator's width knobs do (read from source)
+
+- **`--ceiling X`** (`tools/carry_width_select.py`) retunes only the existing width-adaptive selectors.
+  - Inside functions that read `b.num_allocated_qubits`, it replaces the constant 892 with X (889 ≤ X ≤ 900).
+  - It also replaces `ceiling` closures and defaults equal to 892.
+- **`--flag-mbu-ceiling X`** (`tools/carry_flag_mbu.py`) picks, at X allocated qubits, a width-preserving variant of
+  the HW06/HW07 zero-flag retirement (one clean flag, two dirty borrowed wires).
+- **The pinned build already uses both at 891, yet still peaks at 892.**
+  - 7bd10fca has 219 excursions to 892: extract 65, synthesis 1, padded_unsynthesis 45, unextract 108.
+  - So fixed-width kernels, which no selector covers, set the peak.
+
+### Route A: build from the generator (MEASURED from the §7 bridge)
+
+- The generator's non-conversion stages already cost **+10.1k mean T** against v100's (C1 keeps v100's):
+  extract +2.9k, synthesis +0.6k, unsynthesis +1.3k, unextract +5.3k.
+- A generator-based Q = 891 decoder is therefore ≥ +10.1k mean T against C1 even before any narrowing penalty.
+  That is 11× break-even and 25× the target.
+
+### Route B: narrow C1 itself (MEASURED; `idle_at_peaks.py`, `freeable.py`, `andfree.py`)
+
+C1 has **487 excursions to 892**, all in v100-derived stages:
+
+| stage | excursions to 892 |
+|---|---:|
+| extract | 99 |
+| synthesis | 1 |
+| unsynthesis | 117 |
+| unextract | 270 |
+
+The conversion block is already ≤ 888.
+
+For each excursion window I took the full state on 4,096 official-sampler shots and the live qubits untouched within
+the window, and asked whether one of them can be removed cheaply:
+
+| stage | windows | an idle qubit is an affine function of other idle qubits (0 T: CNOT out, CNOT back) | an idle qubit is an AND of two idle literals (1 T) | neither |
+|---|---:|---:|---:|---:|
+| extract | 99 | 5 | 0 | **94** |
+| synthesis | 1 | 0 | 0 | **1** |
+| unsynthesis | 117 | 58 | 0 | **59** |
+| unextract | 270 | 104 | 0 | **166** |
+
+The idle qubits at the peaks are data-bearing: syndrome-word coefficients and heads, between 25 and 855 of them
+depending on the margin. They carry information and are not recomputable temporaries.
+
+**Cost of Route B.**
+- The 320 "neither" windows need a deeper nonlinear recompute, at ≥ 2 T each, so ≥ 640 T optimistic. Earlier
+  measurements on an 877-qubit build put it at 23–42 T per window, i.e. ≈ 7–13k T.
+- A global qubit renaming (interval colouring of live ranges, with rare-input-safe ranges) would also be needed.
+
+**Conclusion.** Q = 891 is not reachable within +400 mean T by either route. Stopped at step 1 as instructed; no
+generator run was made.
+
+**Possible side gain (not pursued).** The 167 windows that are freeable at 0 T do not lower Q, because Q is the
+maximum over all windows.

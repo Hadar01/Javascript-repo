@@ -109,6 +109,12 @@ int main(int argc,char**argv){
     {long l=live<HL?HL:live; hist[sg][l-HL]+=1; if(live>prevlive){for(long L=max(prevlive+1,(long)HL);L<=live;L++)entries[sg][L-HL]++;} prevlive=live;}
     while(di<dumpops.size()&&(long)k==dumpops[di]){fprintf(dumpf,"%ld %d %ld ",(long)k,sg,live);long vs=getenv("VAL_SHOT")?atol(getenv("VAL_SHOT")):-1;for(uint32_t q=0;q<nq;q++){if(vs>=0)fputc(((qv(q)[vs>>6]>>(vs&63))&1)?'1':'0',dumpf);else fputc(dirty[q]?'1':'.',dumpf);}fputc('\n',dumpf);di++;}
     if((k&255)==0)for(uint32_t q=840;q<nq;q++)qlive[q]+=dirty[q];
+    if(getenv("STATE_OPS")){static vector<long> sops; static bool init=false; if(!init){init=true;string ds=getenv("STATE_OPS");size_t st=0;while(st<ds.size()){size_t e=ds.find(',',st);if(e==string::npos)e=ds.size();sops.push_back(atol(ds.substr(st,e-st).c_str()));st=e+1;}}
+      for(long so:sops)if((long)k==so){FILE*sf=fopen((out+"_state_"+to_string(so)+".bin").c_str(),"wb");fwrite(Q.data(),8,Q.size(),sf);fclose(sf);}}
+    {static FILE*pl=nullptr; static bool pinit=false; static long inpk=-1; static long PK=0;
+     if(!pinit){pinit=true; if(getenv("PEAK_LOG")){pl=fopen(getenv("PEAK_LOG"),"w");PK=atol(getenv("PEAK_LEVEL")?getenv("PEAK_LEVEL"):"892");}}
+     if(pl){ if(live>=PK && inpk<0){inpk=k; fprintf(pl,"S %ld ",(long)k); for(uint32_t q=0;q<nq;q++)fputc(dirty[q]?'1':'.',pl); fputc('\n',pl);} 
+             else if(live<PK && inpk>=0){fprintf(pl,"E %ld\n",(long)k); inpk=-1;} } }
     wpeak=max(wpeak,live);wpeakws=max(wpeakws,livews);
     if((k+1)%TW==0){tl_peak.push_back(wpeak);tl_peakws.push_back(wpeakws);tl_tof.push_back(wtof/N);wpeak=live;wpeakws=livews;wtof=0;}
   }
