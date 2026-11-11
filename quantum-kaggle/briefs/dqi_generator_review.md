@@ -36,5 +36,19 @@ steps too.
 - `prlimit --as=20e9`, `timeout 4h`, `nice -n 10`.
 - Script: `tools/dqi/run_generator_sandbox.sh`. Its output is validated only with the unchanged official verifier, on fresh salts.
 
-## Results
-(filled in after the run)
+## Results (2026-11-11)
+- **Byte-exact reproduction.** The run finished in 332 s, with status `ISOLATED_SOURCE_AND_PINNED_NEW_PLANS_BYTE_EXACT_PASS`.
+  - Output sha256 `7bd10fcab4f2dd653aabfa475cd67b0d7b8ca6bd1aec7149b7905c2b0390dd0f`, as pinned.
+  - All six stage boundaries matched their pinned hashes.
+- **Source integrity.** The read-only copy's sha256 list is identical before and after the run (480 files).
+- **Official verifier** (unchanged), 3 fresh salts, 102,400 shots each:
+
+| Salt | Status | Value / phase errors | Mean T | Static T | Q | Ratio |
+|---|---|---|---|---|---|---|
+| Cgen-00 | PASS | 0 / 0 | 403,502.7 | 458,203 | 892 | 63.9012 |
+| Cgen-01 | PASS | 0 / 0 | 403,502.7 | 458,203 | 892 | 63.9012 |
+| Cgen-02 | PASS | 0 / 0 | 403,502.8 | 458,203 | 892 | 63.9012 |
+
+- **Gap to public v100** (e9f54be3; mean T 395,305, ratio 65.226): **8,198 mean T (2.07%)**. That is much smaller than the
+  62.6k static-T gap, because most of the extra static T sits in rarely executed conditional branches. The later public
+  rewrites therefore recovered about 8.2k mean T, and the sprint's bridge step attributes them by stage.
