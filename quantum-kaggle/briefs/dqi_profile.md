@@ -420,11 +420,28 @@ Checks:
 | own census, 1,048,576 paired shots | 3 value (w = 17, 17, 28) | **the same 3 shots**, no others |
 | forced-weight stress, w = 18…35, 8,192 shots each, + 3 extra w = 35 sets (172k shots) | 0 / 0 | 0 / 0 |
 
+**Official verifier, 15 equal-budget salts** (`Csmall-00…14`; the coordinator's pooled count):
+
+| | v100 | C1 |
+|---|---:|---:|
+| failures | 8 | 5 |
+| pooled p | — | 3.5e-6 (CI 1.5–6.9e-6) |
+| E[ratio] | 65.118 | 65.439 |
+
+C1 scored 25.33469 on the public leaderboard, which equals the local zero-failure value.
+
+**How to read these numbers.**
+- **C1's gain is attributed to its −1,914.5 mean T.** Q is unchanged.
+- **We have not demonstrated a difference in failure rate between C1 and v100.**
+  - 5 against 8 failures in 15 salts is not statistically distinguishable.
+  - The paired 1,048,576-shot census found the same 3 failing shots for both.
+  - The two circuits' failure uncertainties are reported separately above.
+
 Credits: the block is from atakanaldemir/qcc-c44-five-helper-release-sources v1 (Apache-2.0; SomeJoint, Atakan
 Aldemir, yoyobar, Ali Haydar Özdağ, manwithacat and the lineage in its CREDITS). The host is public v100 (lineage
 credited in the heliosli and kirilltym notebooks). Notices are retained.
 
-## 9. Structural step: can Q drop to 891? Step-1 estimate (2026-11-11). Result: NO within budget
+## 9. Structural step: can Q drop to 891? Step-1 estimate (2026-11-11). Result: unattractive under this budget (archived)
 
 The budget was Q ≤ 891 everywhere, at most +400 mean T against C1 (break-even +886), and failure rate unchanged.
 
@@ -473,12 +490,51 @@ The idle qubits at the peaks are data-bearing: syndrome-word coefficients and he
 depending on the margin. They carry information and are not recomputable temporaries.
 
 **Cost of Route B.**
-- The 320 "neither" windows need a deeper nonlinear recompute, at ≥ 2 T each, so ≥ 640 T optimistic. Earlier
+- The 320 "neither" windows need a deeper nonlinear recompute, at ≥ 2 T each, so ≥ 640 T optimistic. That is above the +400 target but below the ≈ 886 break-even. Earlier
   measurements on an 877-qubit build put it at 23–42 T per window, i.e. ≈ 7–13k T.
 - A global qubit renaming (interval colouring of live ranges, with rare-input-safe ranges) would also be needed.
 
-**Conclusion.** Q = 891 is not reachable within +400 mean T by either route. Stopped at step 1 as instructed; no
+**Conclusion.** Q = 891 is unattractive under this budget by either route, and is archived. Route B's optimistic lower bound (≥ 640 T) is above the +400 target but below the ≈ 886 break-even, so it is not shown to be unprofitable. The realistic estimate (≈ 7–13k T) is far above both. Stopped at step 1 as instructed; no
 generator run was made.
 
 **Possible side gain (not pursued).** The 167 windows that are freeable at 0 T do not lower Q, because Q is the
 maximum over all windows.
+
+## 10. Scouting public DQI files for splice-able cheaper blocks (2026-11-11)
+
+Method: `prof.cc` on the same 4,096 official-sampler shots, stages by INFO_TAG (`stagecmp.py`). Each cell gives mean T
+and peak / number of excursions to 892.
+
+Files:
+- live95 = `cd71c482…`, the current heliosli/qcc-circuits-live v95 file. It is credited there to team "i want to run
+  gemma 9b" via sheroleg.
+- v104 = `368d2d1c`.
+- v107 = `9fcda0c1`.
+
+| stage | C1 | v100 | v95 | v104 | v107 | live95 | 7bd10fca |
+|---|---|---|---|---|---|---|---|
+| extract | 59,169.0 892/99 | 59,169.0 892/99 | 59,169.0 892/99 | 59,169.0 892/99 | 59,169.0 892/99 | **58,742.0** 892/99 | 62,079.0 892/65 |
+| synthesis | 31,635.0 892/1 | 31,635.0 | 31,635.0 | 31,635.0 | 31,635.0 | 31,635.0 | 32,255.0 |
+| convert | **59,852.7** 888/0 | 60,663.0 892/16 | 60,687.0 | 60,663.0 | 60,663.0 | 60,687.0 | 59,851.3 890/0 |
+| scan | 44,264.2 880 | 44,264.2 890 | 44,264.2 | 44,264.2 | 44,264.2 | 44,264.2 | 44,264.2 882 |
+| unconvert | **61,350.7** 888/0 | 62,454.6 892/50 | 62,478.6 | 62,454.6 | 62,454.6 | 62,478.6 | 61,350.9 |
+| unsynthesis | 40,429.0 892/117 | 40,429.0 | 40,429.0 | 40,429.0 | 40,429.0 | 40,429.0 | 41,734.9 (padded) |
+| unextract | 96,689.7 892/270 | 96,690.1 | 96,693.5 | 96,690.0 | 96,688.3 | **96,180.9** 892/288 | 101,967.4 |
+| **total** | **393,390.4** | 395,304.9 | 395,356.3 | 395,304.8 | 395,303.1 | 394,416.7 | 403,502.8 |
+
+**One lead qualifies: live95's extract + unextract pair, spliced into C1.** Measured:
+- **Cheaper.** Extract −427.0 and unextract −508.8, so **−935.8 mean T** together.
+- **Boundary.** States at `@exit:extract` and `@enter:unextract` are bit-identical to C1's on all 4,096 shots
+  (0 differing qubits), so the bridge is the identity.
+- **Peak.** 892, with 99 + 288 excursions. That is ≤ 892, so Q is unchanged.
+- **Classical bits.** The pair is self-contained in both live95 and C1: 0 bits flow between the pair and the rest
+  (`bitdeps2.py`). Its bits would still be renumbered to fresh ids.
+- **Failure probe (65,536 paired census shots).** live95 fails exactly the 3 known shots and no others. This is weak
+  evidence and still needs the full census, stress sets and the official verifier.
+
+**Price.** −935.8 mean T ≈ −0.24% of DQI cost, so E[ratio] ≈ 65.44 → ≈ 65.59 (≈ +0.08% overall), provided the failure
+rate is not worse.
+
+Nothing else qualifies:
+- v104 and v107 are identical to v100 within 2 T per stage.
+- live95's convert and unconvert are dearer than C1's.
