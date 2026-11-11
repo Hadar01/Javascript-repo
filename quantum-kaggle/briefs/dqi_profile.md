@@ -364,3 +364,62 @@ direct search for rank ≤ 98 on the 24 × 24 × 24 tensor is far beyond the tim
 
 **Open lead.** A genus ≥ 2 Chudnovsky construction, or a published bound μ₄(12) ≤ 32, would give ≤ 96 ANDs, saving
 ≈ 2.3k T per AND-triple. That needs literature access.
+
+## 7. Bridge: generator output 7bd10fca vs v100 (MEASURED, 2026-11-11)
+
+Method: `prof.cc`, 4,096 official-sampler shots, the same inputs for both circuits, stages by INFO_TAG. The generator
+names its unsynthesis stage `padded_unsynthesis`.
+
+| stage | 7bd static | v100 static | 7bd mean | v100 mean | Δ mean (v100 − 7bd) | 7bd peak (892-excursions) | v100 peak (892-excursions) |
+|---|---:|---:|---:|---:|---:|---|---|
+| extract | 62,079 | 59,169 | 62,079.0 | 59,169.0 | **−2,910** | 892 (65) | 892 (99) |
+| synthesis | 32,255 | 31,635 | 32,255.0 | 31,635.0 | −620 | 892 (1) | 892 (1) |
+| convert | 60,060 | 60,663 | 59,851.3 | 60,663.0 | **+812** | **890 (0)** | 892 (16) |
+| scan | 44,275 | 44,275 | 44,264.2 | 44,264.2 | 0 | **882** | 890 |
+| unconvert | 76,478 | 62,534 | 61,350.9 | 62,454.6 | **+1,104** | **890 (0)** | 892 (50) |
+| (padded_)unsynthesis | 58,633 | 40,429 | 41,734.9 | 40,429.0 | −1,306 | 892 (45) | 892 (117) |
+| unextract | 124,423 | 96,881 | 101,967.4 | 96,690.1 | **−5,277** | 892 (108) | 892 (270) |
+| **total** | 458,203 | 395,586 | **403,502.8** | **395,304.9** | **−8,198** | | |
+
+Reading the table:
+- **The "62k static" gap is mostly conditional fix-ups.** 7bd's reverse stages hold 54.7k static Toffolis inside
+  HMR-conditioned blocks, which execute about half the time. In mean T, v100 is 8.2k cheaper.
+  - The saving sits in extract (−2.9k), unextract (−5.3k) and unsynthesis (−1.3k).
+- **v100 is worse in conversion.** Its convert, scan and unconvert block costs +1.9k mean T and is wider (892
+  against 890).
+- **The lineages diverged at source level.**
+  - v100's reverse stages are not stream rewrites of 7bd10fca: the reverse-node glue has a different structure.
+  - The prefix up to `extract` (mask projection + initial) is identical op for op.
+  - The register layout is identical.
+- **Conversion boundary (MEASURED on 4,096 + 4,096 held-out shots).** At `@enter:convert`, v100's 841 live qubits
+  are an exact affine image of 7bd's state, and 7bd's other 841 live qubits are affine in v100's.
+  - 7bd additionally carries 2 held flags (q865, q889), which its convert…unconvert block never touches.
+  - Both blocks read only the 48,300 E bits from outside and have no live-out classical bits.
+  - So the block is transplantable.
+
+## 8. Candidate C1: v100 with the generator's conversion block (approach b, v100 splice)
+
+**Construction** (`tools/dqi/splice/build_c1.sh`, deterministic, SHA-256-checked inputs):
+1. Take v100 up to `@enter:convert`.
+2. Insert `bridge_in`: 3,171 CNOTs implementing the affine map fitted on the boundary states (rank 842).
+3. Insert 7bd10fca's ops from `@enter:convert` to `@exit:unconvert`. Its 841 internal classical bits are renumbered
+   to fresh ids; E bits are kept.
+4. Insert `bridge_out`: the inverse CNOTs.
+5. Append v100 from `@exit:unconvert` onward.
+
+Checks:
+- The affine map is checked on 4,096 held-out official-sampler shots: 0 mismatches.
+- A rebuild from scratch reproduces sha256 `ca59beb811b604c4c18114597745d96fa4ca62dafb131db7c274a558aa5ffb83`.
+
+| | v100 | **C1** |
+|---|---:|---:|
+| mean T (`prof`, 4,096 shots) | 395,304.9 | **393,390.4** (−1,914.5) |
+| static T | 395,586 | 408,927 (static includes the half-executed fix-ups) |
+| Q | 892 | 892 |
+| convert / scan / unconvert peak | 892 / 890 / 892 | **888 / 880 / 888** (66 excursions to 892 removed) |
+| own census, 1,048,576 paired shots | 3 value (w = 17, 17, 28) | **the same 3 shots**, no others |
+| forced-weight stress, w = 18…35, 8,192 shots each, + 3 extra w = 35 sets (172k shots) | 0 / 0 | 0 / 0 |
+
+Credits: the block is from atakanaldemir/qcc-c44-five-helper-release-sources v1 (Apache-2.0; SomeJoint, Atakan
+Aldemir, yoyobar, Ali Haydar Özdağ, manwithacat and the lineage in its CREDITS). The host is public v100 (lineage
+credited in the heliosli and kirilltym notebooks). Notices are retained.
