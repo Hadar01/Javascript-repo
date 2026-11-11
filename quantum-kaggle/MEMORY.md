@@ -332,7 +332,7 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Official sweeps, equal budget on Cx-00…14: C2 4 failures (all phase), C1 5. Not demonstrated different.
   - E[ratio]: C2 65.624, C1 65.449.
   - Submitted mix6 (ref 58249948): local score 25.3548 at k=0, 25.3161 at k=1. **It scored 25.35482 (k=0), our best score, but rank 300 of 2,862**, because the field moved: rank 150 needs 25.371 and top 100 needs 25.435.
-  - Submitted mix7 (ref 58250494): C2 + v112 invsqrt 6c6a734d (22.1255, full PASS) + v112 chem 8d4c99a2 (11.2378). Local score 25.3735 at k=0.
+  - Submitted mix7 (ref 58250494): C2 + v112 invsqrt 6c6a734d (22.1255, full PASS) + v112 chem 8d4c99a2 (11.2378). Local score 25.3735 at k=0. **It scored 25.37349: rank 145 of 2,864, best so far.** Top 100 needs 25.435 (+0.24%).
   - Public v112: invsqrt 6c6a734d (22.1255, full PASS); dqi cd71c482 (our C2 donor); chem 8d4c99a2 at 11.2378 (T 14,908), passes.
   - Fusion sprint ended at the day-1 checkpoint with outcome (B). Awaiting the supervisor's call on the
     one-qubit structural change.
