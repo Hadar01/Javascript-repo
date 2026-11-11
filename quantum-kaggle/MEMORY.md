@@ -300,6 +300,20 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - the generator's ceiling knobs are already set to 891, and it still peaks at 892;
     - C1 has 487 moments at 892 qubits, 320 of which have no cheap fix.
 
+- 2026-11-11, supervisor decision after the DQI sprint:
+  - **Next sprint: invsqrt measurement-crossing search.**
+    - Firm checkpoint after ONE focused day: either a fully costed transformation worth implementing, or a write-up of
+      why the examined boundaries give no gain. A second day only if justified.
+    - Target: ≥1% invsqrt cost at the same Q. That is about +0.335% overall, which would cross the reported 0.28% gap.
+    - Base: public best invsqrt a15b0d73 (22.1109, cost 93,925.3).
+  - **DQI scouting is a small side task.** Only an actual cheaper block with compatible inputs, outputs, workspace
+    and phase counts as a lead; a new notebook alone is not.
+  - **Merger outreach deferred** until a specific complementary team is identified.
+  - Wording rules:
+    - 5 vs 8 failures means "we have not demonstrated a difference". Attribute C1's gain to the gate reduction.
+    - Width narrowing at ≥640 T is above the +400 target but below the ~886 break-even, so it is unattractive under
+      that budget, not shown unprofitable. Archived.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
