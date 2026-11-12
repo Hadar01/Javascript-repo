@@ -110,3 +110,58 @@ Gate slack in that file: error_1 2.4e-10 Ha, error_2 2.2e-10 Ha, E_gap 2.5e-10 H
 
 - Why it loses: the per-target greedy with random fixed factors does not share rank-one features across outputs the way the tensor search does. Each Toffoli in the loaders fans out to up to 22 outputs.
 - Not integrated. No candidate.
+
+## 7. Chemistry feasibility day (2026-11-12): compiler experiment on the SUBMITTED loaders
+
+**Outcome: no verified cheaper loader, and no costed route from the tested mechanism. Continuation is not recommended
+on this evidence.** Table and weights were kept fixed throughout.
+
+**1. Baseline (our submission, public v112 chem `8d4c99a2…`, ratio 11.2378).** From the unchanged verifier's full
+output:
+
+| Item | Value |
+|---|---|
+| Total T | 14,908 |
+| Angle loaders | 4,123 T per pass × 2 = 8,246 |
+| Heuristic (formula-priced, not compiler-controlled) | 6,662 T |
+| Q | 427 |
+| Loader cap | 128 qubits |
+
+Per-loader static Toffoli-like counts (`operation_statistics`) sum to 4,123, equal to the verifier's executed mean:
+
+| Loaders | Toffolis each |
+|---|---|
+| k0 | 297 |
+| k1–k3 | 290 |
+| k4–k14 | 267–270 |
+
+Widths are 126–128. The submitted loaders already beat marculera's c44 set on k1–k5 (4,132 total there), so the
+earlier "201 vs 195 products" gap is not the current baseline.
+
+**2. Pinned loader.** `angle_k_9`, sha256 `c9d692b4…f04452`, 267 CCX:
+- 11 selection qubits, 5 × 8 word qubits, 76 workspace qubits;
+- 36,182 CX;
+- 76 HMR and 76 R uncomputes, whose fix-ups are CZ only, so cleanup is Toffoli-free.
+
+**3. Reproducible start.** `tools/chem/loader_span_scan.py` simulates ANGLE_0…ANGLE_k exactly as the verifier does
+(`scoreinfra/circuits.py`):
+- addresses 0…num_vectors−1 = 0…1,219;
+- words start at zero;
+- each circuit runs forward with words = batch k−1, **and again on the reverse traversal with words = batch k**.
+
+**4. Mechanism tested: cross-output shared products.** At every CCX, is the product it XORs into its target already a
+GF(2) combination of the other live qubits (plus 1) on every reachable state? If so it becomes CNOTs, with no width
+and no Toffoli. This is exact on the reachable subspace, because CX and CCX act on basis states without phase.
+
+| Scope | Hits |
+|---|---|
+| Forward states only, all 2,048 selection values (first run) | 1 in k9: CCX q0 q1 → q120 equals q17 ⊕ q18, the word_0 top-bit gauge helper |
+| Forward **and reverse** entry states | 0 in k9: that identity fails when the words hold batch 9, so the first hit was a false positive |
+| Exact verifier reachable set (1,220 addresses × forward and reverse), all 15 loaders, 4,123 CCX | **0** |
+
+**5. Decision.** No loader beats the submitted one under this mechanism. Not tested:
+- multi-gate re-synthesis, i.e. a lower-rank shared decomposition across outputs or a flip-graph search over the
+  extracted bilinear terms;
+- loader-aware re-rounding of the words (a table change, excluded today).
+
+The dimension-count figure (~168) is a heuristic, not evidence that a cheaper decomposition exists for this table.
