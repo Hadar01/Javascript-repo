@@ -353,6 +353,15 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
 - Wording rule: probabilities such as "~77% zero-failure draw" are sample-based estimates with uncertainty, not
   calibrated guarantees.
 
+- 2026-11-12 fusion width sprint, checkpoint 1: **STOP** (no checkpoint 2).
+  - v112 has 8,159 ops at 62 qubits, in 70 regions.
+  - 6 regions (6,700 ops; the XAG lookup plus 5 table-only regions) cannot free a qubit without re-synthesising the
+    table with one fewer live wire. That cost is not priced (perhaps ~3 ANDs per helper).
+  - The other 64 regions need rematerialisations: at least 15 Toffolis optimistically, more realistically 23–31.
+  - So ≥1% (≤9.43) is out of reach for the examined designs. Break-even (<24.82) holds only under optimistic pricing
+    everywhere.
+  - Max plausible net is about 0.3% fusion, about 0.1% overall. Not pursued.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)

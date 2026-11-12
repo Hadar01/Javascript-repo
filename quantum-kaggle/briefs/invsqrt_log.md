@@ -674,3 +674,53 @@ None of the candidates touches the rotations.
 **Why no gain.** Every cheaper crossing found needs either one more live qubit at ops where live = 62 (the low pass, the row peaks, the B-branch peaks), or a phase that is not Clifford on the reachable states.
 - A 1% gain at Q = 62 would need a structural change that frees a qubit across 16.3k–22k.
 - Yesterday's idle-wire test (9 idle wires, 332 of 512 patterns) and today's exact live profile both rule out the obvious ways to do that.
+
+---
+## 62 → 61 qubits on v112 (6c6a734d), checkpoint 1 (Agent A), 2026-11-12
+
+**Verdict: stop at checkpoint 1.**
+- The ≥1% target (ΔC ≤ 9.43) is out of reach for the designs examined.
+- Break-even (ΔC < 24.82) is reachable only under optimistic assumptions about a component we have not costed.
+
+**Diff against a15b0d73.** Only the forward shifter changed (ops 94–498 now use a 46-CSWAP network). Everything after it is identical, shifted by +146 ops.
+
+### 1. Whole-circuit width (`tools/invsqrt/width_profile.py`)
+Method: all x, coin seeds 1 and 2. A qubit counts as needed at an op if it is live before or after the op, or is touched by it.
+- **8,159 ops need all 62 qubits, in 70 regions spanning ops 1663–24748.**
+
+| cluster | regions | ops at 62 |
+|---|---|---|
+| XAG table lookup, 1663–7493 | 1 | 5,831 |
+| high pass, 8593–9453 | 8 | 762 |
+| 9709–10888 (5 table-only regions + 2 others) | 7 | 935 |
+| forward-row tails, 14537–16315 | 23 | ≈ 110 |
+| low pass, 16487–16694 | 1 | 208 |
+| reverse rows, 18699–22192 | 26 | ≈ 280 |
+| 24497–24748 | 4 | 42 |
+
+### 2–3. Which qubit, and where its information would go
+**Capacity bound** (`tools/invsqrt/idle_capacity.py`). At a peak op, let D be the live wires untouched over the region and B the busy wires.
+- A transformation that only acts on D, with B used read-only, can free a qubit only if, for every value of B, the reachable D patterns number at most 2^(|D|−1).
+- **The bound fails in 6 regions (6,700 ops):** the lookup and the five 9.8k–10.8k regions.
+  - There, D = {q0..q13, q23}: the 14 low x_n bits plus the lz flag [lz ≥ 2].
+  - B is 47 wires that hold address functions only (256 classes).
+  - For 63 of the 256 addresses, D carries 21,848 patterns, against a bound of 16,384. The cause is δ (14 bits) plus the extra lz information for even lz.
+  - Freeing a qubit there therefore means re-synthesising the table computation with one fewer live address-function wire. That was not costed. Our XAG synthesizer's budget curve suggests roughly 3 ANDs per helper removed at low budgets.
+- **The other 64 regions pass the bound.**
+- **Flag packing:**
+  - The flag q23 is idle in 13 separate intervals and covers 62 of the 70 regions.
+  - It cannot be packed into the x register cheaply. With x_n kept in place, the spare capacity is the lz trailing zeros plus the x_n[21] slot, and Kraft's inequality forces an almost thermometer-like code, so conversion needs AND chains.
+  - During the lookup, x_n[20] and e are busy, and the max_x slack lives only in those high bits.
+
+### 4. Costs for the 64 regions that pass the bound
+Tool: scratch `br/iv_cost.py`. It screened 1,230 idle (wire, interval) candidates, excluding x-mantissa wires and q23, on a stratified sample.
+- **Cost-1 candidates:** 153 can be erased with a Clifford fix-up and restored with one CCX (rank-1 restore with a single-wire factor).
+- **No cost-1 option:** 21 regions — the high pass, 9709–9745, 10857–10888, 16102–16315, the low pass, and 18699–18749.
+- **Minimum-cost cover:** 7 one-CCX rematerialisations plus 4 more expensive ones.
+  - If each expensive one costs 2, 3, 4 or 6, the totals are 15, 19, 23 or 31 Toffolis.
+  - Costing the expensive ones at 2 is optimistic and not proven. The rank-1 test only tried single-wire factors, and several of these values are not even quadratic at the erase point.
+- **Rotations:** unchanged. A renumbering plan was not drawn up, since no design passes.
+
+### 5. Verdict
+- **≥1% (ΔC ≤ 9.43):** these regions alone need at least 15 under optimistic pricing. **No.**
+- **Break-even (ΔC < 24.82):** possible only if the table re-synthesis costs about 10 or less and the expensive rematerialisations cost at most 2–3 each. Realistic pricing (about 23 to 31, plus the table work) exceeds the limit. **Not recommended.**
