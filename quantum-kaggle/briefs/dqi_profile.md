@@ -538,3 +538,91 @@ rate is not worse.
 Nothing else qualifies:
 - v104 and v107 are identical to v100 within 2 T per stage.
 - live95's convert and unconvert are dearer than C1's.
+
+## 11. Candidate C2 and its phase-failure follow-up (2026-11-11/12)
+
+### Build
+
+C2 is C1 with the extract and unextract blocks of the public live file, spliced in. Tooling:
+`tools/dqi/splice/build_c2.sh`, `build_c2.py`.
+
+- **Inputs:** C1 `ca59beb8…` and donor `cd71c482…`.
+  - The donor is `dqi.kmb.xz` from Kaggle dataset `heliosli/qcc-circuits-live` version 95 (2026-11-11T10:36:05Z),
+    manifest portfolio `v112hq_hw25_ay3`.
+  - It is credited to team "i want to run gemma 9b" (`iwanttorungemma9b/vqcc-team-experiments-condensed`,
+    Apache-2.0), as shipped in sheroleg's notebook `quantum-circuits-from-zero-1-sqrt-x-explained` v6.
+- **Construction:** the two donor blocks replace C1's between the same INFO_TAGs.
+  - No bridge is needed: the boundary states are bit-identical.
+  - The pair's 1,357 classical bits are renumbered to fresh ids.
+  - Output sha256 `3152f1dd1bf55285d7e8157911d262f21ad295240eac146e1576ec5a3914dd8a`.
+
+### Results (MEASURED)
+
+**The gain is the gate reduction: mean T 392,454.7 against C1's 393,390.4, i.e. −935.7.** Q stays 892.
+
+- **Boundary identity on a fresh set.** On 4,096 official-sampler shots not used for the lead analysis (seed 880001),
+  the C1 and donor states are bit-identical at the end of extract and at the start of unextract.
+- **Paired census, 1,048,576 shots** (the seeds used for v95/v100/C1). C2 fails exactly C1's 3 shots (w = 17, 17,
+  28) and no others.
+- **Stress sets** (w = 18–35, 172k shots): 0 failures.
+
+**Failure counts, reported separately.** Official verifier on `Cx-00…14` at equal budget:
+
+| circuit | failures | kind |
+|---|---:|---|
+| C2 | 4 | all phase |
+| C1 | 5 | 4 value, 1 phase |
+| donor | see below | |
+
+**We have not demonstrated a difference in failure rate between C2 and C1.**
+- Pooled C2 estimate (15 official runs + census): p = 2.7e-6, 95% CI [1.1e-6, 5.6e-6], E[ratio] ≈ 65.62
+  [65.54, 65.67].
+- The chance of a zero-failure scored run is a **sample-based estimate of ≈ 0.76, with a CI of about 0.57–0.89
+  propagated from the interval on p**. It is not a calibrated probability.
+- C2 scored 25.37349 on the leaderboard.
+
+### Phase-failure follow-up (the supervisor's question)
+
+**1. The failing official shots replayed.** `official_failshots.py` with the exact verifier seeds finds:
+
+| salt | batch / index | shot | weight |
+|---|---|---:|---:|
+| Cx-04 | 23 / 202 | 6,090 | 35 |
+| Cx-07 | 212 / 130 | 54,402 | 33 |
+| Cx-10 | 275 / 166 | 70,566 | 32 |
+| Cx-13 | 157 / 32 | 40,224 | 33 |
+
+All four are phase errors with clean values. Each input was regenerated with the verifier's sampler and replicated
+64–256 times in my simulator. The result:
+- every input fails in **every** replica, both with random measurement outcomes and with all HMR outcomes forced to
+  0, in **C2, C1, the donor and v100** (and in v95 for the one tested);
+- a neighbouring shot from the same batch passes in all of them.
+
+**So these are input-determined phase failures shared by the whole lineage, not effects of the splice or of
+measurement repayment.**
+- Localising Cx-04 with randomness enabled in one stage at a time is uninformative: it fails in every configuration
+  because the error is deterministic.
+- **Partial classical evidence (ESTIMATE).** With the reversed-locator convention, 2 of the 4 failing inputs have a
+  degree gap in the half-degree Euclid on (σ_even, σ_odd): one degree-3 quotient and one degree-2. Only about 0.75% of
+  random draws have a gap.
+  - This is consistent with the source's own note: "safe divisors make roundtrip exact … forward decode is only proved
+    for generic Euclid degrees" (conversion).
+  - The other two failing inputs are not explained by this pair.
+
+**2. Donor baseline.** The unchanged official verifier on the donor over `Cx-00…14`: see the table below.
+
+**3. Boundary argument: what was checked.**
+- **Classical bits.** In C1 and in the donor, no classical bit flows between the extract + unextract pair and the
+  rest of the circuit, in either direction (`bitdeps2.py`).
+- **Quantum-state-dependent phase.** On 8,192 official-sampler shots (two independent input sets), each under two
+  independent measurement-randomness seeds:
+  - The full 892-qubit states at middle entry (end of extract) and middle exit (start of unextract) are bit-identical
+    across C2, C1 and the donor.
+  - The phase accumulated over the middle (synthesis … unsynthesis, including C2/C1's conversion block) is
+    **independent of the measurement seed and identical per shot in C2, C1 and the donor**.
+  - The phase at middle entry does depend on the seed in all three circuits. So the pair carries measurement debts
+    across the middle and repays them in unextract. The middle neither repays nor creates debts belonging to the pair.
+- **What this means.** On these shots, C2's final phase equals the donor's whenever the pair's measurement outcomes
+  are the same.
+- **What it does not show.** It does not prove equality on rare inputs where C1's and the donor's middles might
+  behave differently. The paired 1M census and the 4 replayed failures found no such input.
