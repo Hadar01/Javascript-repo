@@ -337,6 +337,22 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Fusion sprint ended at the day-1 checkpoint with outcome (B). Awaiting the supervisor's call on the
     one-qubit structural change.
 
+- 2026-11-12, supervisor decision: **fusion one-qubit width sprint** (62→61 qubits), two checkpoints.
+  - Base: v112 invsqrt 6c6a734d, C = 1513.9247 Tof-eq.
+  - Budget, from 61(C+ΔC) < 62C:
+    - any gain needs ΔC < 24.82;
+    - ≥1% needs ΔC ≤ 9.43.
+  - Must confirm the WHOLE circuit's width drops: every 62-qubit peak has to be fixed.
+  - Checkpoint 1, feasibility (1 day). Checkpoint 2, implementation, only if a design survives the budget.
+- DQI is lightweight. Reopen integration only when scouting finds a specific cheaper, compatible block; do not
+  re-check the same lineages.
+- C2 follow-up (DQI agent, 1 core): strengthen the splice-boundary PHASE argument.
+  - C2's official failures were all phase errors.
+  - Replay the failing shots, run the donor cd71c482 baseline on the same salts, and check for phase debt across the
+    boundary.
+- Wording rule: probabilities such as "~77% zero-failure draw" are sample-based estimates with uncertainty, not
+  calibrated guarantees.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
