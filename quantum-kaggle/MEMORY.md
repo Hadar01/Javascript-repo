@@ -362,6 +362,23 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     everywhere.
   - Max plausible net is about 0.3% fusion, about 0.1% overall. Not pursued.
 
+- 2026-11-12 supervisor decision:
+  - **Fusion is CLOSED for now**: 5 negative bounded searches. Reopen only for a specific new mechanism. Do not fund
+    the table rebuild.
+  - Order of work: (1) finish the C2 phase-boundary check; (2) one focused chemistry feasibility day.
+  - Chemistry day rules:
+    - Confirm the current baseline from our SUBMITTED chem files (v112 8d4c99a2, 11.2378, T 14,908). Catching up
+      to the public compiler adds no score.
+    - Pin one representative loader: table, circuit, helper state, width, full forward/reverse cost.
+    - Reproduce its existing decomposition, with attribution.
+    - Test ONE cross-output shared-product search, with workspace and uncompute constraints.
+    - Score the complete emitted circuit.
+    - Keep the table and weights fixed.
+    - Continue only with a verified cheaper loader, or a concrete costed route to one.
+  - Milestone: one loader that beats the corresponding circuit in our current submission, verified in the full
+    chemistry pipeline.
+- **The agents hit the WEEKLY usage limit (resets Nov 16, 22:00 UTC).** Until then I work directly.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)

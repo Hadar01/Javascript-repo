@@ -111,6 +111,8 @@ int main(int argc,char**argv){
     if((k&255)==0)for(uint32_t q=840;q<nq;q++)qlive[q]+=dirty[q];
     if(getenv("STATE_OPS")){static vector<long> sops; static bool init=false; if(!init){init=true;string ds=getenv("STATE_OPS");size_t st=0;while(st<ds.size()){size_t e=ds.find(',',st);if(e==string::npos)e=ds.size();sops.push_back(atol(ds.substr(st,e-st).c_str()));st=e+1;}}
       for(long so:sops)if((long)k==so){FILE*sf=fopen((out+"_state_"+to_string(so)+".bin").c_str(),"wb");fwrite(Q.data(),8,Q.size(),sf);fclose(sf);}}
+    if(getenv("PHASE_OPS")){static vector<long> pops; static bool pinit2=false; if(!pinit2){pinit2=true;string ds=getenv("PHASE_OPS");size_t st=0;while(st<ds.size()){size_t e=ds.find(',',st);if(e==string::npos)e=ds.size();pops.push_back(atol(ds.substr(st,e-st).c_str()));st=e+1;}}
+      for(long po:pops)if((long)k==po){FILE*pf=fopen((out+"_phase_"+to_string(po)+".bin").c_str(),"wb");fwrite(phase.data(),8,phase.size(),pf);fclose(pf);}}  // per-shot phase bit after op k
     {static FILE*pl=nullptr; static bool pinit=false; static long inpk=-1; static long PK=0;
      if(!pinit){pinit=true; if(getenv("PEAK_LOG")){pl=fopen(getenv("PEAK_LOG"),"w");PK=atol(getenv("PEAK_LEVEL")?getenv("PEAK_LEVEL"):"892");}}
      if(pl){ if(live>=PK && inpk<0){inpk=k; fprintf(pl,"S %ld ",(long)k); for(uint32_t q=0;q<nq;q++)fputc(dirty[q]?'1':'.',pl); fputc('\n',pl);} 
