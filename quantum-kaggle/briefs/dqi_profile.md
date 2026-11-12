@@ -626,3 +626,37 @@ measurement repayment.**
   are the same.
 - **What it does not show.** It does not prove equality on rare inputs where C1's and the donor's middles might
   behave differently. The paired 1M census and the 4 replayed failures found no such input.
+
+### Boundary phase check (2026-11-12, `tools/dqi/phase_boundary.py`, `prof.cc` PHASE_OPS)
+
+Method:
+- **Inputs:** 4,096 fresh official-sampler inputs (seed 990001), each simulated under two independent
+  measurement-outcome seeds.
+- **Phase bits recorded** per shot after four ops in C1, the donor `cd71c482` and C2: end of `initial`, end of
+  `extract`, end of `unsynthesis`, end of `unextract`.
+- **Block phases:** φE (extract), φM (synthesis…unsynthesis, the "middle"), φX (unextract), and the pair φE⊕φX.
+
+| Check | Result |
+|---|---|
+| φM and the pair phase are independent of measurement outcomes (C1, donor, C2) | 0 / 4,096 shots differ, each circuit |
+| φE and φX individually | Differ on 2,003 / 4,096 shots in all three. A measurement in extract is repaid inside unextract, so the two blocks must be spliced **together** (C2 does this) |
+| C2 pair = donor pair; C2 middle = C1 middle (identical blocks on identical states) | 0 differing shots, both seeds |
+| **Phase debt:** C1 pair = donor pair, and C1 middle = donor middle | **0 differing shots, both seeds** |
+
+**Established.**
+- **No phase debt crosses the C2 splice boundary on the tested states.** No phase is repaid in either direction:
+  - not by classical bits (the pair exchanges none with the rest);
+  - not by qubit-state-dependent corrections (the per-shot block phases agree).
+- C2 therefore equals both correct parents on the phase of every tested shot.
+- **The 4 official phase failures of C2** (Cx-04/07/10/13) are input-deterministic. They fail in C2, C1, the donor
+  and v100 alike, under any measurement outcomes, so they are a property of the decoder family, not of the splice.
+
+**Supported only by randomized testing.** All of the above holds on sampled inputs, not on all inputs:
+- 4,096 shots × 2 seeds here;
+- 1,048,576 census shots;
+- 172k stress shots;
+- 15 official salts.
+
+A rare input class whose pair phase differs between C1 and the donor cannot be excluded. Its rate would sit below
+the resolution of these samples, and the official failure counts give no sign of one (C2 4 vs C1 5, not
+demonstrated different).
