@@ -379,6 +379,23 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     chemistry pipeline.
 - **The agents hit the WEEKLY usage limit (resets Nov 16, 22:00 UTC).** Until then I work directly.
 
+- 2026-11-15 **PUBLIC FRONTIER JUMP.**
+  - Board: #1 30.285, top 100 at 28.060 (a plateau of about 1,000 teams). We had dropped to rank 1,162 (25.37349).
+  - New public pieces, all verified locally with the unchanged verifiers:
+    - invsqrt **44 qubits** (syed3000 v14), 27.6277. With jeffemerson's AND-merge patch (sha 9339eecc), 27.6599;
+      rebuilt here from the published diff, hash matched.
+    - dqi **890 qubits** (syed v13 + hayatohikawa/areebbb product retention, 4b350932), 70.2767, 0/0 on salt team-f-a.
+    - chem hayatohikawa (7e6e65d7), 11.3840.
+    - Other candidates: v119 a4d46b17 invsqrt 46q 26.3974; v119 821bf8d1 dqi 889q 67.8479; syed dqi 69.93 (1 error);
+      syed chem 11.3578; marculera v6 chem 11.3826.
+  - Submitted:
+    - mix8 (ref 58401421): hayatohikawa portfolio, local score 28.0640;
+    - mix9 (ref 58401561): AND-merge invsqrt + hayatohikawa dqi and chem, local score 28.0749.
+  - **Our C1/C2 DQI work (65.70×) is now obsolete:** the public 890-qubit decoder is at 70.28×.
+  - Agents return after Nov 16 22:00 UTC (weekly limit).
+  - NEXT: profile the new 890-qubit DQI and the 44-qubit invsqrt with our tools, and look for splice-able cheaper
+    blocks (same method as C1/C2).
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
