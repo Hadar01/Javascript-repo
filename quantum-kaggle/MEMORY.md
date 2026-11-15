@@ -391,6 +391,8 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Submitted:
     - mix8 (ref 58401421): hayatohikawa portfolio, local score 28.0640;
     - mix9 (ref 58401561): AND-merge invsqrt + hayatohikawa dqi and chem, local score 28.0749.
+  - **Scored: mix8 28.06404; mix9 28.07494, which is rank 64 of 3,124, our best rank so far.**
+    Thresholds: rank 50 at 28.075, top 26 (1%) at 28.208, #10 at 28.899, #1 at 30.285.
   - **Our C1/C2 DQI work (65.70×) is now obsolete:** the public 890-qubit decoder is at 70.28×.
   - Agents return after Nov 16 22:00 UTC (weekly limit).
   - NEXT: profile the new 890-qubit DQI and the 44-qubit invsqrt with our tools, and look for splice-able cheaper
