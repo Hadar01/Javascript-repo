@@ -398,6 +398,30 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - NEXT: profile the new 890-qubit DQI and the 44-qubit invsqrt with our tools, and look for splice-able cheaper
     blocks (same method as C1/C2).
 
+- 2026-11-17 supervisor decision: restore an independently verified advantage over the public mix.
+  - **DQI (primary).** Compare stage costs, representations and workspace across:
+    - the 890-qubit baseline (4b350932);
+    - the 889-qubit alternative (821bf8d1);
+    - syed v13 (46446af1);
+    - C2.
+    Continue only if a specific replacement improves the TOTAL R(ε+)Q²T, including conversion and cleanup.
+    - C2's conversion block gets no special preference. First check whether the new decoder already includes an
+      equivalent.
+    - Compare mean executed gates AND failure behaviour.
+    - 890→889 at the same T is worth only about 0.225%.
+  - **Fusion (secondary).** First explain HOW the 44-qubit architecture got there (fewer stored table outputs,
+    different arithmetic, more recomputation, …), then measure its bottlenecks. Do not restart the old one-qubit search.
+  - Checkpoint 1, one focused workday: a comparison table and at most 2 candidates, each with a full cost estimate and
+    a boundary-correctness argument.
+  - Checkpoint 2: build the strongest candidate, then validate value, phase and cleanup, then compare against the pinned
+    baseline at equal budget plus a fresh hold-out.
+  - Target: 28.208 needs about 1.41% lower cost on one task. Keep smaller verified gains too.
+  - Pinned baselines:
+    - invsqrt 9339eecc (jeff AND-merge on syed v14, 27.6599, 44 qubits);
+    - dqi 4b350932 (70.2767, 890 qubits);
+    - chem 7e6e65d7 (11.3840).
+    - Board: 28.07494, rank 64.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
