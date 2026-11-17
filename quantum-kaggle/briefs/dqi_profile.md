@@ -660,3 +660,139 @@ Method:
 A rare input class whose pair phase differs between C1 and the donor cannot be excluded. Its rate would sit below
 the resolution of these samples, and the official failure counts give no sign of one (C2 4 vs C1 5, not
 demonstrated different).
+
+## 12. Checkpoint 1 (2026-11-17): the public 890-qubit decoder against C2, and candidates
+
+Agent B. Nothing was submitted or committed. Tools: `tools/dqi/cp1/` (README there); scratch outputs under
+`work_B/cp1/`.
+
+### 12.1 Files and method
+
+| tag | sha256 | what it is | Q |
+|---|---|---|---:|
+| **h890** | `4b350932…` | syed3000 v13 + hayatohikawa "product retention" post-pass (pinned baseline) | 890 |
+| sy13 | `46446af1…` | syed3000 v13 as published (dataset v13/v14; no source published for v13) | 890 |
+| v119 | `821bf8d1…` | syed3000 v12 generator rebuilt at "extractor cutoff 18" + areebbb's 241 retained products | 889 |
+| C2 | `3152f1dd…` | ours (§11) | 892 |
+
+- **All numbers are MEASURED** on the same 4,096 official-sampler shots (`d4096`) with my simulator. h890 reproduces
+  its verifier mean T within noise (368,547.5) and gives 0 value / 0 phase errors here. It also gives **0 / 0 on
+  53,248 further official-sampler shots** (13 fresh sets; 57,344 in all) and on 4,096 weight-35 stress shots.
+- **The three syed-line files carry no INFO_TAGs.** I mapped their stages from:
+  - the v12 source (`syed3000/vqcc-own-circuit-portfolio` v12, `dqi_source_zip`, read only, not run). Its emission
+    order is mask gauge → key prefix (extractor, tail/seed, 34-node fused-CRT synthesis) → `Outer` + projective
+    finish (the conversion analogue) → scan → mirror;
+  - per-1k-Toffoli target/control sweeps over the syndrome words (`tgtsweep.py`). The extractor targets S4, S8, …, S69
+    in ascending order; synthesis controls descend by pairs of words; the scan is the run of mask-conditioned ops.
+- **Boundary placement** is accurate to about ±500 T. The scan is exact: 44,275 static T in every file, which is
+  4,025 points × 11.
+
+### 12.2 Stage table (MEASURED; mean executed T over 4,096 shots, static in brackets)
+
+| stage | C2 (892) | v119 (889) | sy13 (890) | **h890 (890)** |
+|---|---:|---:|---:|---:|
+| extract fwd | 58,742 | 73,000 | 67,000 | **67,000** |
+| synthesis fwd | 31,635 | 27,900 | 27,995 [28,000] | **27,995** |
+| conversion fwd | 59,853 [60,060] | 58,722 [58,723] | 58,433 [58,434] | **58,393** [58,394] |
+| scan | 44,264 | 44,233 | 44,228 | **44,228** [44,275] |
+| conversion rev | 61,351 [76,478] | 63,635 [64,202] | 63,271 [63,891] | **63,213** [63,833] |
+| synthesis rev | 40,429 | 36,600 | 37,255 [37,300] | **37,223** [37,268] |
+| extract rev | 96,181 [96,372] | 78,510 [78,714] | 70,518 [70,670] | **70,496** [70,648] |
+| **total** | **392,454.7** [407,991] | **382,599.8** [383,414] | **368,699.5** [369,570] | **368,547.5** [369,418] |
+| Q²·T vs h890 (equal R) | +6.97% | +3.58% | +0.04% | — |
+
+**Width (MEASURED).** Peak live qubits and separate excursions to Q:
+
+| stage | C2 | v119 | sy13 | h890 |
+|---|---|---|---|---|
+| extract fwd | 892 / 99 | 889 / 181 | 889 / 0 | 889 / 0 |
+| synthesis fwd | 892 / 1 | 889 / 35 | 890 / 6 | 890 / 6 |
+| conversion fwd | 888 / 0 | 889 / 421 | 890 / 249 | 890 / 249 |
+| scan | 880 / 0 | 875 / 0 | 875 / 0 | 875 / 0 |
+| conversion rev | 888 / 0 | 889 / 730 | 890 / 195 | 890 / 408 |
+| synthesis rev | 892 / 117 | 889 / 780 | 889 / 0 | 890 / 384 |
+| extract rev | 892 / 288 | 889 / 344 | 890 / 14 | 890 / 218 |
+| **total excursions** | 505 | 2,491 | 464 | **1,265** |
+
+- Workspace beyond the 840 syndrome qubits is 52 for C2, 49 for v119 and 50 for sy13/h890.
+- The retention post-pass parks products in idle qubits. That nearly triples h890's excursions to 890 compared
+  with sy13.
+
+### 12.3 Representation at the stage boundaries (MEASURED, GF(2) affine spans of the full state on the 4,096 shots)
+
+- **Live qubits / affine rank at each boundary.**
+  - C2: 840/841, 841/842, 841/842, 869/869, 869/869, 841/842, 841/842, 840/841. These are clean boundaries.
+  - sy13: 840/841, 867/868, 889/890, 865/866, 865/866, 885/883, 878/878, 862/863. Workspace stays live across every
+    boundary, so the stages are pipelined and there is no clean cut.
+- **Cross-file span intersection at corresponding boundaries.** I measured the dimension of the intersection of the
+  two spans (`span.c`):
+  - **h890 vs sy13:** identical, except where retained products sit in hosts (866 of 883 and 853 of 863).
+  - **v119 vs sy13 and C2 vs sy13:** full (841) only at the two syndrome-only ends. **Every internal boundary
+    shares 1–2 dimensions, i.e. nothing but the constant.**
+  - A 371×7 grid search, C2 boundaries against sy13 states every 1k T, finds at most 25 shared dimensions anywhere.
+- **Consequence.** Neither C2 nor the v12 line can supply a block to v13 without a nonlinear bridge:
+  - the quantities differ by input-dependent scalings, not by a linear change of basis;
+  - any such bridge needs GF(2^12)/GF(2^24) multiplications or inversions on 800+ qubits of content.
+
+### 12.4 What changed (answers to items 2 and 3)
+
+**4b350932 against v100/C2.** It is **not derived from v100/C2**. It is syed3000's own generator line:
+- same skeleton (extract → synthesis → conversion → Chien-type scan → mirrored uncompute);
+- different arithmetic: GF(2^24) as a+bθ with θ²+θ=δ (δ=2048); a fused-CRT synthesis using r+2 evaluations with
+  42-AND GF(2^12) products per node; a projective finish; an adaptive mask gauge in the scan.
+
+Mean-T differences against C2:
+
+| family | h890 − C2 |
+|---|---:|
+| extraction | −17,427 (fwd +8,258, rev −25,685) |
+| synthesis | −6,846 |
+| conversion | **+402** |
+| scan | −36 |
+| width | Q −2 (−0.45% on Q²) |
+
+- **C2's conversion block gets no preference, and h890 already contains an equivalent.** The C2 conversion pair
+  (from generator 7bd10fca) is **402 T (0.11%) cheaper** in mean than h890's.
+- It is unusable anyway: its boundary representation shares nothing with h890's (§12.3).
+
+**How v13 got to 890 (sy13 vs v119).** One extra qubit buys an in-place extractor:
+- 34% of v13's extraction CCX targets are the head (syndrome) words themselves (33% in reverse). In the v12 line it
+  is 0%: every extraction product lands in workspace.
+- Extraction family: **−13,993 T** (fwd −6,000, rev −7,993).
+- Elsewhere within ±0.8k: synthesis +750, conversion −653.
+- v13 also drops the v12 line's CSWAPs in the conversion.
+- Net cost −3.42% for +1 qubit (+0.225% on Q²).
+
+**Product retention (h890 vs sy13).**
+- 152 sites, exactly −152.0 mean T: conversion fwd −40, conversion rev −58, synthesis rev −32, extract rev −22.
+- Same Q; 0.04% of cost.
+
+**821bf8d1 (889 qubits).**
+- The v12 design: a workspace-target extractor, with 889 reached in 2,491 separate excursions.
+- Cutoff 18 plus 241 retained products give mean 382,599.8 against v12's stated 383,156.
+- Against v13 it costs **+13,900 T (+3.77%)** to save one qubit (−0.225%): **+3.54% total cost** (+3.58% against
+  h890).
+
+### 12.5 Candidates examined (item 4). Result: none clears the bar
+
+| idea | measured headroom | verdict |
+|---|---|---|
+| Splice C2 or v12-line blocks into h890 | Boundaries share no representation (§12.3); the only cheaper block (C2 conversion, −402 T) needs two nonlinear bridges | **no** |
+| Extend product retention (own re-implementation, sample-based) | 6,543 retainable pairs on one input set. Only **116** survive cross-checking on three sets, and 107 of those are products nonzero on ≤ 8 of 4,096 shots, i.e. unverifiable rare-case logic | **≈ 0 robust gain** |
+| Prune Toffolis never active on the samples | 4,610 unconditioned CCX (1.25% of T) have zero product on 12,288 shots. **Selection bias:** on 49,152 fresh official shots their union is active on **0.48%** of shots (238). A further 3,040 weight-35-only CCX are active on 0.31%. They are syed's rare-case branches, which h890 decodes correctly (0 failures) | **no** (≈ 500 failures per run) |
+| CCX → CNOT where the product equals one control (226 ops, dense) | The identity breaks on ~0.9% of fresh shots | **no** |
+| Q 890 → 889 | 1,265 excursions in 5 stages (464 even without retention). Worth ≤ 0.225% at unchanged T, and the v12 line shows the 889 design costs +3.8% T | **no** |
+
+**Conclusion of what was checked.**
+- No local or splice change to 4b350932 improves total R·Q²·T measurably.
+- The remaining T is structural:
+  - reverse-pass excess over forward of **+17.5k mean T (4.7%)**: synthesis +9.2k, conversion +4.8k, extraction
+    +3.5k;
+  - coherent rare-case branches of ~15k static T.
+- The synthesis excess (ESTIMATE from the v12 source) is the per-node quadratic-residue division that restores the
+  measured P word (≈ 270 T × 34 nodes).
+- Every lever left is an arithmetic or design change:
+  - a cheaper restoration of P;
+  - GF(2^24) multiplication below rank 99, or a cheaper inverse;
+  - a rare-branch layout that shares controls.
+- Each is research with uncertain payoff, not a checkpoint-2 build.

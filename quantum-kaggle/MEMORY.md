@@ -422,6 +422,24 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - chem 7e6e65d7 (11.3840).
     - Board: 28.07494, rank 64.
 
+- 2026-11-17 **DQI checkpoint 1 (Agent B), dqi_profile.md §12. Nothing submitted or committed.**
+  - Mean T on the same 4,096 shots: h890 4b350932 368,547.5; sy13 46446af1 368,699.5; v119 821bf8d1 382,599.8;
+    C2 392,454.7.
+  - Q²T against h890: sy13 +0.04%, v119 +3.58%, C2 +6.97%.
+  - h890: 0 failures on 57,344 official-sampler shots plus 4,096 weight-35 shots.
+  - **h890 is not a v100/C2 descendant.** It is syed's own line with the same skeleton. Against C2: extraction
+    −17.4k, synthesis −6.8k, conversion +0.4k, scan equal.
+  - v13 against v12: the +1 qubit makes the extractor partly in place (34% of its CCX target the head words, against
+    0%). That saves −14.0k T.
+  - Retention post-pass: exactly −152 T.
+  - Internal boundary states share no GF(2) span across C2 / v12 / v13, so no splices are possible.
+  - **No candidate clears the bar:**
+    - retention headroom is ~0 after cross-checking;
+    - never-active-on-sample Toffolis are rare branches active on 0.48% of fresh shots (selection bias);
+    - 890→889 would need to remove 1,265 excursions.
+  - The remaining levers are research items: synthesis reverse P-restoration (+9.2k excess), GF(2^24) rank below 99,
+    and the rare-branch layout (~15k static).
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
