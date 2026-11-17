@@ -51,7 +51,25 @@ Measured with the verifier's own `evaluate_words`, weights held fixed:
 | Accuracy metrics vs BLAS threads (1, 2, 4; scipy-openblas) | error_1, E_gap, Λ, λ_eff bit-identical; error_2 varies by ≈ 3e-17 Ha, about 10⁸ × smaller than the 1.5e-9 Ha margin |
 | Dependence on the salt | none: error_1, error_2, Λ and E_gap depend only on the recovered words and the weights. The words must agree on every shot, so a fresh private salt cannot move them (see `chem_log.md`) |
 | Loader width cap | 126–128 qubits, within the 128 cap |
-| PyPI kickmix vs bundled `kickmix.so` | see §4 |
+| PyPI kickmix vs bundled `kickmix.so` | identical (§4) |
 
-## 4. Verifier benchmark
-(filled in below)
+## 4. Verifier benchmark (all three tasks)
+
+**Same verifier code, two simulator builds.** The current submission (mix9) was scored on salt `bench-1`, once with
+kickmix 1.0.0 from PyPI (our local setup, and the hosts' planned metric) and once with the competition's bundled
+`kickmix.so` (sha256 `c66b3216…`). Only the import path differed.
+
+| Task | Fields compared | Differences | Seconds, PyPI / bundled |
+|---|---:|---:|---|
+| invsqrt (27.6599) | 16 | 0 | 305 / 193 |
+| dqi (70.2767) | 22 | 0 | 96 / 80 |
+| dfthcsos (11.3840) | 13 | 0 | 13 / 11 |
+| geometric mean | 28.074952032161487 | identical to the last bit | |
+
+Timings are indicative only: two expert agents were using the CPU at the same time.
+
+**Local vs Kaggle public board.** Every one of our 9 submissions so far scored on Kaggle exactly the value we
+predicted locally, to all printed decimals. For the DQI files with rare failures, the prediction is conditional on the
+board's own draw; for example, C1 and C2 both scored their zero-failure local values. The local loop is therefore a
+faithful stand-in for the public metric. The private board differs only by a fresh salt, which can change DQI failure
+counts (each failure ≈ −0.46% of DQI ratio) but not the invsqrt or chemistry scores.
