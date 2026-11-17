@@ -724,3 +724,73 @@ Tool: scratch `br/iv_cost.py`. It screened 1,230 idle (wire, interval) candidate
 ### 5. Verdict
 - **≥1% (ΔC ≤ 9.43):** these regions alone need at least 15 under optimistic pricing. **No.**
 - **Break-even (ΔC < 24.82):** possible only if the table re-synthesis costs about 10 or less and the expensive rematerialisations cost at most 2–3 each. Realistic pricing (about 23 to 31, plus the table work) exceeds the limit. **Not recommended.**
+
+---
+## Architecture review of the 44-qubit invsqrt 9339eecc (jeffemerson's AND-merge cut on Syed Asad Ali's v14), checkpoint 1 (Agent A), 2026-11-17
+
+Credits: circuit by Syed Asad Ali (syed3000, Apache-2.0, original builder) with jeffemerson's two-gate AND-merge cut. Context from jeffemerson's notebooks "invsqrt X-ray: 46-qubit dead ends and ideas" and "28.059 Public Stack + 44-Qubit invsqrt X-ray" (Apache-2.0), and Syed's v12 generator sources (read only, not run).
+
+### 1. What changed from 62 to 44 qubits
+Established by decoding wire values over all x (`tools/invsqrt/decode44.py`, `width_profile.py`, `hmr_map.py`).
+
+| | 62q (6c6a734d) | 44q (9339eecc) |
+|---|---|---|
+| normalisation | x_n = x << lz (full); flags packed into x_n low zero bits + q23 | n = x << 2k (even); k = lz>>1 in 4 flag wires q22–q25 (Syed packs e2, e3 into n's zero bits for a while) |
+| core arithmetic | 8-bit-address XAG table (~38 address-function wires, ~240 ANDs) + polynomial in δ (Horner rows, 19-bit accumulator) | in-place integer sqrt v = isqrt(16n) (13-bit root, top bit implicit, no garbage) + 64-row table C(v_top) + multiplier D(v) + restoring division |
+| phase | high and low passes, 41 rotations at ε 2.43e-13 (7.19 Tof-eq each) | k-barrel shifter (79 CSWAP) + 34 rotations at ε ≈ 1.08e-13 (7.35 each) + 1 T |
+| mean Toffolis / rotation charge / C | ≈1219 / 294.9 / 1513.9 | 1456.25 / 249.9 / 1706.4 |
+| peak | 8,159 ops at 62 in 70 regions; 5,831 of them in the XAG lookup | 2,806 ops at 44 in 406 short regions (3–17 ops), all carry-staircase tops |
+
+**The trade:**
+- **Table:** a big stored table (≈38 address-function wires at the peak) is replaced by a 13-bit table.
+- **Arithmetic:** exact arithmetic replaces the polynomial: sqrt 192, multiplier 401 and division 586 Toffolis, round trip.
+- **Net:** +237 Toffolis and −45 Tof-eq of rotations, i.e. C +192 (+12.7%) for Q −18 (−29%), so cost −20%.
+- **What the extra Toffolis buy:** at every 44-wide peak only 3–24 wires are busy, almost always 4, while the body is 40–43 wires of mostly idle registers.
+
+### 2. Bottlenecks (9339eecc)
+Stage boundaries are our segmentation. Totals reproduce the official mean of 1456.25.
+
+| stage (ops) | mean Tof | cond. part | rot | ops at 44 |
+|---|---|---|---|---|
+| A normalise 0–599 | 51 | 0 | 0 | 0 |
+| B sqrt 600–1599 | 96 | 0 | 0 | 0 |
+| C table load 1600–2799 | 24 | 0 | 0 | 0 |
+| D1 multiplier 2800–4449 | 165 | 0 | 0 | 597 |
+| D2 division 4450–7399 | 254 | 0 | 0 | 938 |
+| E phase 7400–8249 | 124 | 0 | 34 + 1 T | 117 |
+| F reverse division 8250–14749 | 332.0 | 43.0 | 0 | 660 |
+| G 14750–16599 | 28 | 0 | 0 | 0 |
+| H reverse multiplier 16600–20599 | 235.5 | 18.5 | 0 | 494 |
+| I CZ-only repair 20600–22399 | 5 | 0 | 0 | 0 |
+| J un-sqrt 22400–23849 | 96.5 | 2.5 | 0 | 0 |
+| K un-normalise 23850–end | 45.3 | 5.3 | 0 | 0 |
+
+- **Measurements:** 1,236 HMRs; 82 have Toffoli fix-ups worth 69.3 mean Toffolis. Most fix-ups are 1–2 gates at p = 1/2.
+- **Uncompute premiums:** reverse multiplier +70.5 over forward; reverse division +78 over forward.
+- **Rotations:** 249.9 Tof-eq (14.6% of C).
+
+### 3. Two candidates priced against 9339eecc
+Reference points:
+- 1% of the invsqrt cost is 17 Tof-eq.
+- One qubit breaks even at Δ < 39.7.
+- 43 qubits gives ≥1% only if Δ ≤ 22.2.
+
+**C1. Go to 43 qubits by freeing one wire at all 406 peaks.**
+- **Information is not the obstacle.** The idle-capacity bound holds at all 406 regions: ≥20 idle wires, ≤24 busy, 0 violating classes. This differs from the 62q lookup.
+- **Cost is the obstacle.**
+  - jeffemerson's quadratic parking needs ≥49 Tof and leaves 88 windows uncovered.
+  - Our screen of 2,696 idle intervals found 17 free and 96 one-CCX options. 212 regions (95 in D1) have no option at ≤1 Tof.
+  - The cheapest cover uses 8 long intervals. 7 of the 8 hold values that are not even quadratic in the other live wires at either edge, so each needs a non-Clifford erase and a multi-AND rebuild.
+  - Pricing those at 2, 3 or 4 Tof each gives 16, 23 or 30. That is a lower-bound model, not a design.
+- **Flag packing.** The k flags are idle through every arithmetic stretch. But the arithmetic registers have no zero slots that depend on k (only for k = 10). Packing into the sqrt remainder's v-determined low bits needs partial v² terms at each of at least 6 conversions.
+- **Verdict.** It may break even, but it is not credibly ≥1%. Pursue only as a design study.
+- **Structure worth knowing for that study.** At the multiplier peaks, about 30 of 44 wires are functions of the root v4 alone, so the redundancy to exploit is v-information. Syed's hidden v10 and v11 are the same idea.
+
+**C2. Cut the uncompute premium or the fix-ups.**
+- **Where the money is:** the premiums of +70.5 (multiplier) and +78 (division), which include 61.5 Tof of conditional fix-ups in F and H.
+- **Tested and empty:**
+  - deferring kicks to a later free repayment (`kick_defer.py`): 0 of 80;
+  - Clifford reduction of any CCX or CCZ against all live wires (`cond_quad.py`): 0 of 1,386.
+- **Verdict.** No priced gain. Recovering ≥17 Tof would need a new uncompute order under the 44-wire cap; jeffemerson found ≤5 in the divider.
+
+**Overall:** no candidate meets the ≥1% bar on the evidence of one day. Nothing built.

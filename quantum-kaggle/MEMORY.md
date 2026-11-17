@@ -440,6 +440,22 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - The remaining levers are research items: synthesis reverse P-restoration (+9.2k excess), GF(2^24) rank below 99,
     and the rare-branch layout (~15k static).
 
+- 2026-11-17 checkpoint 1 results. **Both NEGATIVE; no checkpoint-2 build.**
+  - **DQI** (dqi_profile.md §12):
+    - h890 4b350932 is syed's own line. Its extra qubit lets extraction run in place (−14k T); product retention
+      adds −152 T.
+    - Five routes fail: C2 conversion splice (incompatible representations, needs non-linear converters),
+      more retention (not robust), pruning unfired Toffolis (rare-case branches, ~500 failures/run),
+      CCX→CX identities (break on 0.9%), 889 qubits (1,265 excursions, ≤0.225%).
+    - Research leads: reverse passes cost +17.5k T, mostly a per-node division restoring a measured 24-bit word.
+  - **Fusion** (invsqrt_log.md):
+    - 62→44 qubits by trading the 8-bit XAG table + Horner polynomial for an in-place integer sqrt, a 13-bit
+      64-row table, a multiplier and a restoring division. C +12.7%, Q −29%.
+    - Candidates:
+      - 43 qubits: the information fits, but the cover costs about 16–30 Tof-eq, at best break-even.
+      - Uncompute premiums: 0 hits.
+    - Lead: hide a third root bit (as syed does for v10/v11) with cubic or table rebuild formulas. Untested.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
