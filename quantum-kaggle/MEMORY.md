@@ -462,7 +462,7 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - dqi 5f901c55 (boristown PW4 patch, 890 qubits): 70.23 with 1 value error on salt team-w-a; 70.55 if clean.
       The board draw for these bytes was clean.
     - chem 4d63be3d (maoxin 4,022 T/pass loaders + leotang09 refit): 11.3887.
-  - Submitted mix10 (ref 58498405).
+  - Submitted mix10 (ref 58498405): **scored 28.18965, rank 168 of 3,301**. Top 100 is 28.18976 (0.0001 above us); rank 50 is 28.240; #26 is 28.452.
 
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
