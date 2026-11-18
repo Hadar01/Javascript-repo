@@ -491,6 +491,24 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
       modes.
     - A clean public draw is one observation.
 
+- 2026-11-18 **DQI reverse-overhead checkpoint 1 (Agent B), dqi_profile.md §13. NEGATIVE: no favourable
+  transformation; stopped per the decision rule.** Nothing submitted or committed.
+  - **Measured on 5f901c55:** mean T 367,110.7, 0/0 on 8,192 shots. Asymmetry +16.5k: synthesis +8.66k,
+    conversion +4.42k, extraction +3.44k.
+  - **About 2/3 is value reconstruction:** one GF(2^24) division "closing" per in-place multiply-and-measure pair
+    (34 synthesis + ~13 conversion), each at ≈ 330 T, within ~5% of the floor for this arithmetic.
+  - **About 1/3 is phase repair** (extraction 3.3k, conversion 1.8k) of measurements made inside the reverse's own
+    inversions:
+    - forward debts are repaid at 0 T;
+    - none of the 130 repair clusters' values reappears linearly in any later state.
+  - **The only removable redundancy** is 2.2k T of norm re-initialisation (erase then recompute). Every such window
+    runs at 889–890 qubits, so keeping the norms costs +6/+12 qubits: net −0.7% to −2.1%.
+  - Conversion also holds ~8.5k T per direction of symmetric "temporary in-place update" recomputation, which would
+    need hundreds of extra qubits to avoid.
+  - Remaining levers are research:
+    - a GF(2^24) division below ~300 T;
+    - a width-neutral rewrite of the remaining re-init sites, ≤ 0.17%.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)

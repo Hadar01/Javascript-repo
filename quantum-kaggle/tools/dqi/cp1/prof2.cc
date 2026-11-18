@@ -93,7 +93,7 @@ int main(int argc,char**argv){
       {static FILE*pf=nullptr; static bool pi=false; if(!pi){pi=true; if(getenv("PROD_OUT")) pf=fopen(getenv("PROD_OUT"),"wb");}
        if(pf && (bt&0x0f)<=1){ // CCX or CCZ: hash of the product vector of each control pair (CCX: a&b; CCZ: 3 pairs)
          auto H=[&](const u64*X,const u64*Y){u64 h=1469598103934665603ULL; u64 any=0; u64 f0=(cond[0]&X[0]&Y[0])&1; for(int w=0;w<W;w++){u64 v=cond[w]&X[w]&Y[w]; any|=v; h^=v; h*=1099511628211ULL; h^=h>>29;} return any?h:0ULL;};
-         u64 rec[5]; rec[0]=k; rec[1]=((u64)(bt&0x0f)<<32)|(u64)(hasc||cstack.size()>0); {long pcn=0; for(int w=0;w<W;w++) pcn+=__builtin_popcountll(cond[w]&A[w]&Bq[w]); rec[1]|=((u64)pcn)<<40;}
+         u64 rec[5]; rec[0]=k | (((u64)pc(cond.data()))<<40); rec[1]=((u64)(bt&0x0f)<<32)|(u64)(hasc||cstack.size()>0); {long pcn=0; for(int w=0;w<W;w++) pcn+=__builtin_popcountll(cond[w]&A[w]&Bq[w]); rec[1]|=((u64)pcn)<<40;}
          if((bt&0x0f)==1){rec[2]=H(A,Bq);rec[3]=0;rec[4]=0;} else {rec[2]=H(A,Bq);rec[3]=H(A,C);rec[4]=H(Bq,C);}
          fwrite(rec,8,5,pf);} }
       if((bt&0x0f)==1){if(doCls){u64 any_tb=0,any_ta=0,any_p=0,d1=0,d2=0;for(int w=0;w<W;w++){u64 p=cond[w]&A[w]&Bq[w];any_tb|=C[w]&cond[w];any_ta|=(C[w]^p)&cond[w];any_p|=p;d1|=p^(A[w]&cond[w]);d2|=p^(Bq[w]&cond[w]);}
@@ -107,6 +107,11 @@ int main(int argc,char**argv){
       else if((bt&0x0f)==2){for(int w=0;w<W;w++){u64 x=(A[w]^Bq[w])&cond[w];A[w]^=x;Bq[w]^=x;}upd(a);upd(b);}
       else {fprintf(stderr,"unk2 %x\n",t);return 9;}
     } else if(nqt==1){uint32_t a=q0[iq++];u64*A=qv(a); tq[0]=a;ntq=1;
+      if(hb){ static vector<long> hv; static size_t hvi=0; static FILE*hvf=nullptr; static bool hvinit=false;
+        if(!hvinit){hvinit=true; if(getenv("HMRV_OPS")){FILE*lf=fopen(getenv("HMRV_OPS"),"r");long x;while(fscanf(lf,"%ld",&x)==1)hv.push_back(x);fclose(lf);sort(hv.begin(),hv.end()); hvf=fopen(getenv("HMRV_OUT"),"wb");}}
+        if(hvf){while(hvi<hv.size()&&hv[hvi]<(long)k)hvi++; if(hvi<hv.size()&&hv[hvi]==(long)k){u64 kk=k; fwrite(&kk,8,1,hvf); fwrite(A,8,W,hvf); hvi++; if(hvi==hv.size())fflush(hvf);}} }
+      if(hb){ static FILE*hf=nullptr; static bool hi=false; if(!hi){hi=true; if(getenv("HMR_OUT")) hf=fopen(getenv("HMR_OUT"),"wb");}
+        if(hf){u64 h=1469598103934665603ULL; long pcn=0; for(int w=0;w<W;w++){u64 v=A[w]&cond[w]; pcn+=__builtin_popcountll(v); h^=v; h*=1099511628211ULL; h^=h>>29;} u64 rec[3]={(u64)k|(((u64)pc(cond.data()))<<40),(u64)a|((u64)pcn<<32), pcn?h:0ULL}; fwrite(rec,8,3,hf);} }
       if(hb){ // HMR
         uint32_t bb=b0[ib++];u64*Bb=bv(bb); seghmr[sg]+=pc(cond.data());
         for(int w=0;w<W;w++){u64 r=rnd();u64 bnew=(Bb[w]&~cond[w])|(r&cond[w]);phase[w]^=A[w]&bnew&cond[w];A[w]&=~cond[w];Bb[w]=bnew;}upd(a);

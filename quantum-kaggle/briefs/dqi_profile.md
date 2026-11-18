@@ -796,3 +796,114 @@ Mean-T differences against C2:
   - GF(2^24) multiplication below rank 99, or a cheaper inverse;
   - a rare-branch layout that shares controls.
 - Each is research with uncertain payoff, not a checkpoint-2 build.
+
+## 13. The forward/reverse asymmetry on 5f901c55: explanation and pricing (2026-11-18, checkpoint 1)
+
+Agent B. Nothing was submitted or committed. I read but did not run any outside code: the syed v12 source, the
+notices of the boristown and Grant Prater files, and Balram Srinivasan's closings notebook (text only). Tools are in
+`tools/dqi/cp2/`; scratch outputs are under `work_B/cp2/`.
+
+### 13.1 Re-measured on 5f901c55 (MEASURED, 4,096 official-sampler shots)
+
+- **Cut points.** The cp1 cut points map onto 5f901c55 through op-signature search:
+  - the forward part is op-identical up to the scan (it shifts by only −160 ops inside the conversion);
+  - the two reverse boundaries were re-located with `tgtsweep.py`.
+- **Whole circuit.** Mean T is 367,110.7 with 0 value and 0 phase errors here, and again 0/0 on a second set of
+  4,096 shots.
+
+| family | forward | reverse | reverse − forward | h890 (cp1) |
+|---|---:|---:|---:|---:|
+| extraction | 66,991.9 | 70,432.3 | **+3,440** | +3,496 |
+| synthesis | 27,995.0 | 36,652.6 | **+8,658** | +9,228 |
+| conversion | 58,193.1 | 62,617.6 | **+4,424** | +4,820 |
+| total | | | **+16,522** | +17,543 |
+
+The asymmetry is similar to h890's. The merged closings in 5f901c55 removed about 1.0k of it.
+
+### 13.2 What the reverse spends its extra T on (MEASURED decomposition)
+
+**Classification.** Every Toffoli is classed by its product function, compared on two input sets:
+- *mirror*: the same AND function also occurs in the forward counterpart;
+- *new*: the function does not occur there;
+- *measurement-dependent*: classically conditioned CCX, or CCZ.
+
+Mean T:
+
+| | extraction fwd / rev | synthesis fwd / rev | conversion fwd / rev |
+|---|---|---|---|
+| mirror CCX | 54,061 / 54,146 | 25,252 / 25,276 | 45,087 / 44,620 |
+| new CCX (value work) | 12,756 / 12,843 | 2,691 / **11,151** | 7,245 / **10,352** |
+| measurement-dependent (phase repair) | 4 / **3,283** | 5 / 178 | 10 / **1,815** |
+| CCX with zero product (rare branches) | 171 / 160 | 47 / 47 | 5,851 / 5,831 |
+
+**Forward debts are not the cost.** I traced the classical dataflow of all 6,096 conditioned or CCZ Toffolis in the
+reverse stages back to the measurements they depend on (`repairdeps.py`). Each forward measurement is repaid in the
+reverse by Clifford gates once its value is restored, at 0 T.
+- **Every T-costing repair depends on measurements made inside the same reverse stage.**
+- The exceptions are 8 synthesis clusters (≈ 81 T in all) and 18 rare conversion clusters (≈ 0 mean T).
+
+**Synthesis (+8,658).** Forward counterpart: the 34-node fused-CRT synthesis.
+- **Destroyed by the forward:** each node measures away the 24-bit head word P (HMR). P is a function of the new
+  numerator N′ and D, so no information is lost: P = (N′ mod qᵢ)/D(αᵢ) in GF(2^24).
+- **Reconstructed by the reverse:** one GF(2^24) division per node (the "closing", ≈ 328 T/node) restores P. The
+  forward's debt on P is then repaid by a free CZ.
+  - The reverse redoes r of the forward's r+2 evaluation products (mirror).
+  - The forward's 2 extra products per node (2,691 T) partly offset the closings (11,151 T).
+- **Phase repair:** +173 in total. Inside each closing, a 14-AND GF(2^6) norm is measured and recomputed 1,661 ops
+  later: 32 blocks × 14 = 448 T (ESTIMATE of its role).
+
+**Conversion (+4,424).**
+- New value work is +3,107, about 13 further GF(2^24) division closings (ESTIMATE from 13 × ≈ 239 net).
+- Phase repairs are +1,805, all local:
+  - 14 one-bit flag repairs × 62 T;
+  - 6 × 99 T;
+  - 7 × 37 T;
+  - 16 × 4 T;
+  - rare branches at about 0 mean T.
+- Mirror deficit: −467.
+- Symmetric, so **not** part of the asymmetry: about 8.5k T in each direction are "temporary in-place updates". The
+  same 500–700-product blocks are added to the polynomial words and then added again 2–4M ops later to undo them.
+
+**Extraction (+3,440).** Value work is symmetric (+85 / +87). Almost all of the excess is phase repair: 3,283 T in
+15 node gadgets plus 3 specials. Each node gadget has three parts:
+1. an inverse-norm repair, 82–83 T. It depends on 12 measurements, and its 41-AND norm N is recomputed after N⁻¹ is
+   measured;
+2. an 84-CCZ "affine quotient" repair of a measured 24-bit quotient, which depends on 24 measurements;
+3. a 27–49 T flag repair.
+
+**Are the repairs avoidable? (MEASURED)** A debt (−1)^{m·v} can be repaid for free, with Z gates, at any later point
+where v is an affine function of the qubits present.
+- I tested every repair cluster's measured values against the affine span of 91 later states (every 200k ops through
+  the post stage; `remat.py`).
+- **None of the 130 clusters ever becomes repayable this way.** The repairs are needed.
+- Caveat: transient rematerialisations between grid points cannot be excluded.
+
+### 13.3 Alternatives priced on the whole circuit (Q² pricing: 1 qubit ≈ 0.225%)
+
+| alternative | T saved | width / failure cost | net |
+|---|---|---|---|
+| Keep P instead of measuring it (no synthesis division) | ≈ 330 per node | +24 qubits held across the middle per node (+5.4%) | **−5.3% per node** |
+| Cheaper GF(2^24) division gadget | ≤ ~0.6k over 49 closings (ESTIMATE). Today ≈ 328–340 T against a formula floor of ≈ 320: 69-T tower inverse with optimal GF(2^6)/GF(2^3) products, rank-99 product, 2×42 scaling, 41-T norm | none | ≤ +0.15%, research only |
+| **Keep norms alive** instead of erase-then-recompute | **2.2k** removable (ext′ 15×41, syn′ 32×14, conv′ 593, conv 570) | **0–1 free qubits in every window** (`widthcheck.py`): +6/+12 qubits (+1.35%/+2.7%) | **−0.7% to −2.1%** |
+| Repay reverse debts later with Clifford gates | 3.3k + 1.8k | not available: no measured value reappears linearly | — |
+| Merge forward and reverse debts on the same function | — | reverse repairs do not depend on forward measurements | — |
+| Hold the conversion's temporary updates instead of recomputing them | ≈ 8.5k per direction | about 24 qubits per nested pair for 2–4M ops, nested about 14 deep | **no** |
+
+### 13.4 Result: no transformation with a favourable full-cost estimate
+
+**The mechanism.**
+- About two thirds of the 16.5k asymmetry is **value reconstruction**: one GF(2^24) division per in-place
+  "multiply-and-measure" pair. That is 34 synthesis nodes plus about 13 conversion pairs, each at ≈ 330 T, within
+  ≈ 5% of the floor for this arithmetic.
+- About one third is **phase repair** of measurements made inside the reverse's own inversions and quotients. Those
+  values never reappear linearly, so the repairs are needed.
+- The one clearly removable redundancy, re-initialising norms after measuring their inverses (2.2k T), exists
+  because those windows run at 889–890 qubits. It is a deliberate T-for-width trade, and undoing it costs more in Q²
+  than it saves in T.
+
+**Decision.** Under the decision rule, I stop here and propose no checkpoint-2 build. The levers left are arithmetic
+research, each with an uncertain outcome:
+- a GF(2^24) division below ~300 T;
+- a width-neutral rewrite of the remaining norm re-initialisation sites (the 15 extraction-reverse gadgets, and the
+  GF(2^6) level inside the 49 closings). Balram did this for the closings, at −20 T per site. At best ≤ ~0.6k T
+  (≤ 0.17%), and it is unproven that the rewrite is width-neutral at these sites.
