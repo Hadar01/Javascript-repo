@@ -456,6 +456,14 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
       - Uncompute premiums: 0 hits.
     - Lead: hide a third root bit (as syed does for v10/v11) with cubic or table rebuild formulas. Untested.
 
+- 2026-11-18: the frontier moved again. Board: top 100 28.190, #26 28.452, #1 31.617; we had fallen to rank 926.
+  - Public 28.19 set from junmiaotiao/qcc-frontier-20261118w, verified locally:
+    - invsqrt 864f81cd (maoxin, 44 qubits): 27.8795.
+    - dqi 5f901c55 (boristown PW4 patch, 890 qubits): 70.23 with 1 value error on salt team-w-a; 70.55 if clean.
+      The board draw for these bytes was clean.
+    - chem 4d63be3d (maoxin 4,022 T/pass loaders + leotang09 refit): 11.3887.
+  - Submitted mix10 (ref 58498405).
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
