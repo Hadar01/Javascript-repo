@@ -889,14 +889,19 @@ where v is an affine function of the qubits present.
 | Merge forward and reverse debts on the same function | — | reverse repairs do not depend on forward measurements | — |
 | Hold the conversion's temporary updates instead of recomputing them | ≈ 8.5k per direction | about 24 qubits per nested pair for 2–4M ops, nested about 14 deep | **no** |
 
-### 13.4 Result: no transformation with a favourable full-cost estimate
+### 13.4 Result: no profitable transformation found within the examined alternatives
+
+> **Scope (supervisor wording, 2026-11-18).** The "≈ 320 T floor" is our estimate for this particular arithmetic
+> construction, and the phase-repair test sampled 91 later points; neither establishes a global lower bound. The
+> conclusion is limited to the alternatives examined below.
 
 **The mechanism.**
 - About two thirds of the 16.5k asymmetry is **value reconstruction**: one GF(2^24) division per in-place
   "multiply-and-measure" pair. That is 34 synthesis nodes plus about 13 conversion pairs, each at ≈ 330 T, within
-  ≈ 5% of the floor for this arithmetic.
-- About one third is **phase repair** of measurements made inside the reverse's own inversions and quotients. Those
-  values never reappear linearly, so the repairs are needed.
+  ≈ 5% of our ESTIMATED floor for this construction (not a proven bound).
+- About one third is **phase repair** of measurements made inside the reverse's own inversions and quotients. On the
+  91 sampled later points those values never reappear linearly, so no cheaper deferral was found there. Changes
+  between sampled points were not excluded.
 - The one clearly removable redundancy, re-initialising norms after measuring their inverses (2.2k T), exists
   because those windows run at 889–890 qubits. It is a deliberate T-for-width trade, and undoing it costs more in Q²
   than it saves in T.

@@ -491,12 +491,12 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
       modes.
     - A clean public draw is one observation.
 
-- 2026-11-18 **DQI reverse-overhead checkpoint 1 (Agent B), dqi_profile.md §13. NEGATIVE: no favourable
-  transformation; stopped per the decision rule.** Nothing submitted or committed.
+- 2026-11-18 **DQI reverse-overhead checkpoint 1 (Agent B), dqi_profile.md §13. NEGATIVE: no profitable
+  transformation found within the examined alternatives (not a global lower bound); stopped per the decision rule.** Nothing submitted or committed.
   - **Measured on 5f901c55:** mean T 367,110.7, 0/0 on 8,192 shots. Asymmetry +16.5k: synthesis +8.66k,
     conversion +4.42k, extraction +3.44k.
   - **About 2/3 is value reconstruction:** one GF(2^24) division "closing" per in-place multiply-and-measure pair
-    (34 synthesis + ~13 conversion), each at ≈ 330 T, within ~5% of the floor for this arithmetic.
+    (34 synthesis + ~13 conversion), each at ≈ 330 T, within ~5% of our ESTIMATED floor for this construction (not a proven bound).
   - **About 1/3 is phase repair** (extraction 3.3k, conversion 1.8k) of measurements made inside the reverse's own
     inversions:
     - forward debts are repaid at 0 T;
@@ -508,6 +508,20 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Remaining levers are research:
     - a GF(2^24) division below ~300 T;
     - a width-neutral rewrite of the remaining re-init sites, ≤ 0.17%.
+
+- 2026-11-18 supervisor decision: **stay on light maintenance.**
+  - Provisional slot 1 is DQI 5f901c55. Slot 2 is NOT locked; 4b350932 is the backup.
+  - Reopen research only for a new circuit, formula or measured bottleneck, not because the rank moved.
+  - Selection model revised (briefs/final_selection.md):
+    - shared-rate and separate-rate scenarios;
+    - census inputs counted once in shared pooling;
+    - Jeffreys propagation of the rate;
+    - OVERALL-score expectations with credible intervals, kept separate from future-draw quantiles;
+    - the pair adds +0.0013 to +0.0027 overall in every scenario.
+  - Wording rules:
+    - 7/7 cross-replay = shared failures on those 7 inputs, NOT identical failure sets;
+    - Fisher p = 0.45 means not demonstrated, NOT proven noise;
+    - independence of different-hash draws is a modelling assumption.
 
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact

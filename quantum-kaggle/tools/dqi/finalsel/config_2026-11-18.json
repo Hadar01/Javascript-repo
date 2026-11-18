@@ -1,0 +1,61 @@
+{
+ "r_inv": 27.8795520158974,
+ "r_chem": 11.388728171120182,
+ "Q": 890,
+ "files": {
+  "5f901c55": {
+   "T": 367110.1
+  },
+  "4b350932": {
+   "T": 368547.8
+  }
+ },
+ "scenarios": [
+  {
+   "label": "shared rate, official verifier shots only (7 / 2,252,800)",
+   "shared": [
+    7,
+    2252800
+   ]
+  },
+  {
+   "label": "shared rate, official + census (census inputs counted once) (7 / 2,514,944)",
+   "shared": [
+    7,
+    2514944
+   ]
+  },
+  {
+   "label": "separate rates, official only (2 / 1,126,400 vs 5 / 1,126,400)",
+   "rates": {
+    "5f901c55": [
+     2,
+     1126400
+    ],
+    "4b350932": [
+     5,
+     1126400
+    ]
+   }
+  },
+  {
+   "label": "separate rates, official + census (2 / 1,388,544 vs 5 / 1,388,544)",
+   "rates": {
+    "5f901c55": [
+     2,
+     1388544
+    ],
+    "4b350932": [
+     5,
+     1388544
+    ]
+   }
+  }
+ ],
+ "pairs": [
+  [
+   "5f901c55",
+   "4b350932"
+  ]
+ ]
+}

@@ -1,62 +1,87 @@
-# Final-selection analysis (2026-11-18). No pair chosen yet.
+# Final-selection analysis (2026-11-18): provisional, no pair locked
 
-Kaggle's final score is the better private score of the two submissions we select. This note measures what drives
-that score for our candidates and how much a second submission adds.
+**Provisional slot 1:** DQI `5f901c55` (with invsqrt `864f81cd` and chemistry `4d63be3d`). **Slot 2 stays open.**
+DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of the two selected submissions.
 
 ## 1. What the private salt can change (measured)
 
 | Task | Salt sensitivity | Evidence |
 |---|---|---|
-| dfthcsos | none: cost bit-identical | salts fsel-chem-a/b: 294,642,170.565169 both |
-| invsqrt | negligible: every x tested, mean T over about 200M shots | public notebook vs our run agree to the second decimal of cost |
-| DQI mean T | about 1e-6 relative | 5f901c55: 367,109.4–367,110.9 over 10 salts plus 16 census seeds |
-| DQI failures K | the only material effect: each failure ≈ −0.46% of DQI ratio | below |
+| dfthcsos | none: cost bit-identical | salts fsel-chem-a/b both give 294,642,170.565169 |
+| invsqrt | negligible: every x is tested, mean T over about 200M shots | a public notebook's figure and our run agree to the second decimal of cost |
+| DQI mean T | about 1e-6 relative | 5f901c55: 367,109.4–367,110.9 over 10 salts + 16 census seeds |
+| DQI failures K | the only material effect; each failure ≈ −0.46% of DQI ratio (≈ −0.15% overall) | below |
 
-**Seeding.** `verify_submission_dqi` seeds tests from sha256(circuit .kmb) + salt (likewise invsqrt).
-- Two DIFFERENT DQI files get independent private draws.
-- The SAME file in both submissions gets the identical draw, so the second submission adds nothing on DQI.
+**Seeding.** `verify_submission_dqi` seeds the shot inputs and the measurement outcomes from sha256(circuit .kmb) + salt.
+- Different files therefore get different seeds. We MODEL their draws as independent, which is a standard
+  pseudorandomness assumption, not something the seed expression proves.
+- The same file in both submissions gets the identical draw.
 - Deliberately altering bytes to re-roll a draw is off-limits.
 
-## 2. Failure behaviour and overlap
+## 2. Observations, and whether they can be pooled
 
-Equal budget: the unchanged official verifier on Fsel-00…09 for both files, plus a shared 16 × 16,384-shot simulator
-census.
+| Source | 5f901c55 | 4b350932 | Inputs |
+|---|---|---|---|
+| Official verifier, salts Fsel-00…09 | 1 / 1,024,000 | 5 / 1,024,000 | official sampler; different per file (different hash) |
+| Official verifier, one extra salt | 1 / 102,400 (team-w-a) | 0 / 102,400 (team-f-a) | official sampler |
+| Simulator census, seeds 2000–2015 | 0 / 262,144 | 0 / 262,144 | the SAME inputs for both files; own sampler reproducing the verifier's distribution, not the official code |
 
-| File | Official failures (10 salts) | Census failures (262,144 shots) | Pooled |
-|---|---:|---:|---:|
-| 5f901c55 (current) | 1 (+1 on team-w-a) | 0 | 2 / 1,388,544 |
-| 4b350932 | 5 | 0 | 5 / 1,388,544 |
+- **Duplicates:** see the result line at the end of this section. A syndrome duplicated across runs would make pooled
+  counts non-independent; the census inputs are by construction shared, so they count once in shared-rate pooling.
+- **Census caveat:** the census sampler is an independent reimplementation; it has matched official failure counts on
+  exact replays. Scenarios with and without the census are both reported.
 
-**Overlap** (`tools/dqi/cross_replay.py`): every failing input of either file was regenerated exactly with the
-verifier's seeds and run through the OTHER file 64 times with fresh measurement randomness.
-- **7 of 7 fail in the other file in all 64 of 64 replicas**, all as value errors.
-- The two decoders share their failure modes on this evidence: a deterministic input class.
-- **2 vs 5 is not a demonstrated difference** (Fisher exact p = 0.45). Treat the rate as common: 7 / 2,777,088
-  ≈ 2.5e-6.
+**Cross-replay** (`tools/dqi/cross_replay.py`).
+- Each file's 7 failing official inputs (2 + 5) were regenerated exactly and run through the OTHER file 64 times with
+  fresh measurement randomness.
+- **All 7 fail in the other file in 64 of 64 replicas** (value errors).
+- That establishes **shared, measurement-insensitive failures on those 7 inputs**. It does not establish that the two
+  files' failure sets are identical.
+- **2 versus 5** (Fisher exact p = 0.45): the sample **does not demonstrate a rate difference**. That does not prove
+  the difference is noise.
+- So both a shared-rate scenario and a separate-rate scenario are carried below.
 
-## 3. Private DQI ratio distributions (`tools/dqi/final_pair_mc.py`)
+## 3. Private-score model (overall geometric mean), `tools/dqi/final_pair_mc.py`
 
-Model: Jeffreys posterior on the common p, K ~ Binomial(102,400, p), and the verifier's own repetition overhead.
+- **Score:** (r_inv × r_dqi(K) × r_chem)^(1/3), with r_inv = 27.87955 and r_chem = 11.38873 fixed, and r_dqi(K) from the
+  verifier's own repetition overhead.
+- **Rate uncertainty:** propagated with a Jeffreys posterior on p.
+- **How to read the columns:**
+  - "90% CrI of E[score]" is uncertainty in our *estimate* of the expected score (from p);
+  - "future draw 5/50/95%" is the spread of a single private draw under the assumed model.
+- Config: `tools/dqi/finalsel/config_2026-11-18.json`.
 
-| Option | Ratio at K=0 | E[ratio] | P(K=0) | 5% / 50% / 95% |
-|---|---:|---:|---:|---|
-| 5f901c55 alone | 70.5519 | 70.4649 | 0.76 | 70.229 / 70.552 / 70.552 |
-| 4b350932 alone | 70.2767 | 70.1898 | 0.76 | 69.955 / 70.277 / 70.277 |
-| best of 5f901c55 + 4b350932 | — | 70.4816 | — | 70.229 / 70.552 / 70.552 |
+| Scenario | File | p median [90% CrI] | P(K=0) median [90% CrI] | E[score] mean [90% CrI] | Future draw 5 / 50 / 95% |
+|---|---|---|---|---|---|
+| shared, official only (7 / 2.25M) | 5f901c55 | 3.2e-6 [1.6, 5.5] | 0.72 [0.57, 0.85] | 28.1755 [28.1664, 28.1827] | 28.1466 / 28.1897 / 28.1897 |
+| | 4b350932 | same | same | 28.1388 [28.1297, 28.1460] | 28.1100 / 28.1530 / 28.1530 |
+| shared, + census once (7 / 2.51M) | 5f901c55 | 2.8e-6 [1.4, 5.0] | 0.75 [0.60, 0.86] | 28.1769 [28.1686, 28.1834] | 28.1466 / 28.1897 / 28.1897 |
+| | 4b350932 | same | same | 28.1402 [28.1319, 28.1467] | 28.1100 / 28.1530 / 28.1530 |
+| separate, official only | 5f901c55 (2 / 1.13M) | 2.0e-6 [0.5, 5.0] | 0.82 [0.60, 0.95] | 28.1800 [28.1687, 28.1874] | 28.1466 / 28.1897 / 28.1897 |
+| | 4b350932 (5 / 1.13M) | 4.6e-6 [2.0, 8.6] | 0.62 [0.41, 0.81] | 28.1324 [28.1172, 28.1442] | 28.0736 / 28.1530 / 28.1530 |
+| separate, + census | 5f901c55 (2 / 1.39M) | 1.6e-6 [0.4, 4.0] | 0.85 [0.66, 0.96] | 28.1818 [28.1725, 28.1878] | 28.1466 / 28.1897 / 28.1897 |
+| | 4b350932 (5 / 1.39M) | 3.7e-6 [1.6, 7.1] | 0.68 [0.48, 0.85] | 28.1362 [28.1234, 28.1458] | 28.0736 / 28.1530 / 28.1530 |
 
-Splitting the effects:
-- **Gate savings:** 5f901c55 is 1,437.7 mean T cheaper, worth +0.39% in DQI ratio. This is the dominant, reliable
-  difference.
-- **Error frequency:** not demonstrated different between the files.
-- **Shared failure modes:** confirmed for every observed failure. A pair therefore only helps through independent
-  draws of a shared rate: +0.017 DQI ratio (≈ +0.008% overall).
+**Best-of-two pair 5f901c55 + 4b350932, gain in expected overall score over 5f901c55 alone:**
 
-## 4. Implications for the final choice (to be made later)
+| Scenario | Mean gain | 90% CrI |
+|---|---|---|
+| shared, official only | +0.0027 | [+0.0012, +0.0045] |
+| shared, + census | +0.0024 | [+0.0011, +0.0041] |
+| separate, official only | +0.0015 | [+0.0002, +0.0042] |
+| separate, + census | +0.0013 | [+0.0002, +0.0034] |
 
-- Slot 1 should hold the cheapest DQI file with no demonstrated reliability deficit (currently 5f901c55), plus the
-  best deterministic invsqrt and chemistry files.
-- Slot 2 adds value only through a DIFFERENT DQI file with a ratio at K=0 close to slot 1's. Its gain is bounded by
-  P(slot 1 fails) × P(slot 2 clean) × (gap in ratio). With today's candidates that is about +0.017 DQI ratio.
-- A clean public draw is one observation: P(K=0) ≈ 0.76 for any of these files.
-- Re-run this analysis on any new candidate DQI file before the deadline (equal-budget sweeps, a cross-replay of its
-  failures, then the model).
+**Reading.**
+- In every scenario 5f901c55 has the higher expected overall score by about 0.036–0.048 points. The reliable driver is
+  its 1,437.7 fewer mean Toffolis; the failure-rate difference is not demonstrated.
+- The P(K=0) intervals are wide (roughly 0.4–0.96 across scenarios), so a clean public draw is one observation, not
+  evidence of reliability.
+- A second slot holding 4b350932 adds a small, positive expected gain in all scenarios. It is worth taking at
+  selection time if no stronger eligible candidate exists, but it does not justify more research now.
+
+## 4. Process for any new candidate before the deadline
+1. Run the unchanged official verifier on fresh salts at an equal budget against slot 1.
+2. Cross-replay its failures against slot 1 in both directions.
+3. Check for duplicates.
+4. Add it to the config and rerun the model in both scenarios.
+5. Choose slot 2 by the expected overall score of the pair, with its credible interval.
