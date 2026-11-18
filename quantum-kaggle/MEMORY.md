@@ -464,6 +464,33 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - chem 4d63be3d (maoxin 4,022 T/pass loaders + leotang09 refit): 11.3887.
   - Submitted mix10 (ref 58498405): **scored 28.18965, rank 168 of 3,301**. Top 100 is 28.18976 (0.0001 above us); rank 50 is 28.240; #26 is 28.452.
 
+- 2026-11-18 supervisor decision:
+  - **One bounded DQI sprint on the reverse-pass overhead** (+17.5k T on h890).
+  - Checkpoint 1 is EXPLANATION, not implementation. For each reverse stage, record:
+    - its forward counterpart and the mean-T difference;
+    - what the forward pass destroys or measures;
+    - which reverse ops reconstruct, clear or repair phase;
+    - alternatives, with qubits and full cost.
+  - Then choose ONE transformation. Implement it only with a correctness argument and a favourable cost.
+  - Stop after one focused day if there is no mechanism.
+  - Gains at fixed Q and failure rate:
+
+    | Overhead removed | Gates | Score |
+    |---|---|---|
+    | 25% | 4,375 | 28.302 |
+    | 50% | 8,750 | 28.416 |
+    | 100% | 17,500 | 28.650 |
+
+    The top 1% (28.452) needs about 10.1k T, about 58% of the overhead.
+  - If checkpoint 1 is negative, go back to maintenance until there is new evidence.
+  - Third-root-bit fusion is DEFERRED until a reconstruction formula with a full cost exists.
+  - **Final-selection analysis: start now, choose later.**
+    - Check whether the salt changes mean T and measurement branches, not only failures.
+    - Measure failure OVERLAP between candidates on a shared diagnostic corpus, plus the unchanged verifier.
+    - Rank by estimated final-score distributions, separating gate savings, error frequency and shared failure
+      modes.
+    - A clean public draw is one observation.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
