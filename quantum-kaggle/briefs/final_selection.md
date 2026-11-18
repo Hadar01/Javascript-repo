@@ -26,8 +26,10 @@ DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of
 | Official verifier, one extra salt | 1 / 102,400 (team-w-a) | 0 / 102,400 (team-f-a) | official sampler |
 | Simulator census, seeds 2000–2015 | 0 / 262,144 | 0 / 262,144 | the SAME inputs for both files; own sampler reproducing the verifier's distribution, not the official code |
 
-- **Duplicates:** see the result line at the end of this section. A syndrome duplicated across runs would make pooled
-  counts non-independent; the census inputs are by construction shared, so they count once in shared-rate pooling.
+- **Duplicates: none** (`tools/dqi/dup_check.py`).
+  - Every official shot of all 22 official runs (both files, 11 salts each) was regenerated with the verifier's own
+    seeds and sampler: **2,252,800 shots, 2,252,800 distinct syndromes, 0 duplicates.**
+  - The census inputs are shared by construction, so they count once in shared-rate pooling.
 - **Census caveat:** the census sampler is an independent reimplementation; it has matched official failure counts on
   exact replays. Scenarios with and without the census are both reported.
 
