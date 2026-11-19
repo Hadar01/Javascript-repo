@@ -556,6 +556,10 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - best pair f56b04c7 + 4471b493, E[max] 28.232;
     - gain over the best single +0.009 to +0.012;
     - it beats f56b04c7 + 5f901c55 (+0.005 to +0.007).
+  - Slot-2 hedge mix12 (ref 58573441) = mix11 with DQI 4471b493: public 28.23775, a K=0 draw.
+  - Provisional pair: mix11 + mix12, pending supervisor review. The brief is final_selection.md §5.
+  - Proposed to the supervisor: a bounded DQI product-retention scan (identical products with a free qubit across the
+    interval). About 42 Toffolis/shot are needed for the top 100. Awaiting a decision.
   - Levers to reach the top 100 (+0.00106 GM):
     - 1 invsqrt Toffoli per input ≈ +0.0056 GM;
     - 24 DQI Toffolis per shot ≈ +0.0006 GM.

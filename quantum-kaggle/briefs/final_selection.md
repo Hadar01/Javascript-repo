@@ -170,3 +170,6 @@ Zero duplicates confirms no repeated inputs; it does not prove statistical indep
 - slot 1 = mix11 (acc7b9c8 + f56b04c7 + 6ef06081 + loaders);
 - slot 2 = the same with DQI 4471b493.
 - The slot-2 file is submitted as mix12 (ref 58573441), so it is selectable at the deadline. Nothing is locked.
+- mix12 scored **public 28.23775**, a zero-failure public draw.
+  - It matches the local K=0 value of 28.23776 to within the salt-dependence of mean T (about 1.5e-6 relative T,
+    about 1e-5 in score).
