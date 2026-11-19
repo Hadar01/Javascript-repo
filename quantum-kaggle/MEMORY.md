@@ -536,6 +536,21 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Artifacts and diagnostics are pinned in quantum-kaggle/PINS.md and tools/dqi/finalsel/.
   - Mode: LIGHT MAINTENANCE.
 
+- 2026-11-19 (evening) **Selection REOPENED: a materially better public set appeared.**
+  - Public board moved: we fell to rank 705 (28.18965 shared by 43 teams). Top 100 at 28.23945, rank 26 at 28.593,
+    #1 31.740; 3,399 teams.
+  - Frontier public set (goodpjw2008 / ozertuu notebooks):
+    - invsqrt `acc7b9c8`: 74,361.78, ratio 27.92798, 44 qubits, worst error 0.99946 of tolerance;
+    - DQI `f56b04c7`: 4471b493 plus 2 swap-collapse sites, −24 Toffolis/shot, T 365,848, zero-failure ratio 70.795;
+    - chemistry npz `6ef06081`: ratio 11.388728, essentially the same as ours; same 15 loaders.
+  - Local unmodified verifier, salt nov19-a: all PASS. DQI drew K=1 there; GM at K=0 is 28.2384.
+  - Submitted as mix11 (ref 58572455).
+  - goodpjw2008 reports 6 failures / 1,638,400 shots for f56b04c7, same rate class as 5f901c55.
+  - Kernel outputs (www.kaggleusercontent.com) are blocked by the proxy; get files from datasets instead.
+  - Levers to reach the top 100 (+0.00106 GM):
+    - 1 invsqrt Toffoli per input ≈ +0.0056 GM;
+    - 24 DQI Toffolis per shot ≈ +0.0006 GM.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)

@@ -15,4 +15,9 @@ them against these hashes. The 15 slot-1 angle loaders are listed in `tools/dqi/
 | `ds_hayatohikawa_qcc-c8-milestone-portfolio/dfthcsos/submission.npz` | `7e6e65d79f3528d7ec64bb22e5498edac4979dd0164b3a3cb4c67f05035133a1` | earlier chemistry table (11.3840) |
 | `jeff/invsqrt.kmb` | `9339eeccc3b2d01289c8c51687bda31a70b0260e22bed07c516edb6134705641` | jeffemerson AND-merge on syed v14 (27.6599), rebuilt from published diff |
 | `mx10/submission.zip` | `4862c0d995b60d0faee8a2d411bba7c5efbe2b85c3f347eaab4a058b4579f9b4` | our current best submission (ref 58498405, public 28.18965) |
+| `nov19/ds_ozertuu/invsqrt.kmb` | `acc7b9c86b4f65c0204194779a85d2c6b6631538316ffab2091c416a178f60a0` | 2026-11-19 frontier invsqrt: maoxin123 44-qubit, cost 74,361.78 (ozertuu/quantum-sim-linalg-cache) |
+| `nov19/ds_ozertuu/dqi.kmb` | `f56b04c7138951cdbb2133dd6ea0dfb896528a1adc930597f02593a0506197a8` | 2026-11-19 frontier DQI: goodpjw2008 swap-collapse on Koushik Rudra's 4471b493 (same dataset, dqi.kmb.xz) |
+| `nov19/ds_ozertuu/dfthcsos/submission.npz` | `6ef06081cb9c5752ee7235c86d480ddfc5db027f01e5d5d66a544dbda85d1958` | 2026-11-19 chemistry weights: Manvender Singh refit of 4d63be3d; loaders identical to slot 1 |
+| `nov19/f23498/invsqrt.kmb` | `ecf908fe…` | same invsqrt as acc7b9c8 with lower-precision angle literals (cost 74,383.70) |
+| `mx11/submission.zip` | `5cdb7e4acbe8c082…` | submission ref 58572455 (acc7b9c8 + f56b04c7 + 6ef06081 + slot-1 loaders), local 28.2384 at K=0 |
 | `kg/data/kickmix/kickmix.so` | `c66b3216c4029e0cdfd09054306aa0feadf53ab2f50c1164e37f752874e5005e` | competition-bundled simulator (results identical to PyPI kickmix 1.0.0) |
