@@ -794,3 +794,18 @@ Reference points:
 - **Verdict.** No priced gain. Recovering ≥17 Tof would need a new uncompute order under the 44-wire cap; jeffemerson found ≤5 in the divider.
 
 **Overall:** no candidate meets the ≥1% bar on the evidence of one day. Nothing built.
+
+## 2026-11-19: new public invsqrt `acc7b9c8` (maoxin123, 44 qubits)
+- Official verifier (salt nov19-a), 200,540,928 shots:
+  - cost 74,361.78, ratio 27.92798;
+  - mean Toffoli 1,450.44, T 4.0;
+  - 33 rotations at ε = 2.005e-13;
+  - worst error 0.99946 of tolerance.
+- It beats our previous `864f81cd` (74,491) by 0.17%.
+- `ecf908fe` is the same circuit with shorter angle literals; it costs 74,383.70.
+- **Its angles are at the LP optimum:**
+  - the minimum absolute margin is 2.1065e-12 turns;
+  - it is reached by 31 inputs (within 1e-6 relative), with mixed error signs;
+  - so an angle refit gains nothing, the same as for the v14 line.
+- Doubling the margin would be worth about 4.6 Toffoli-equivalents (+0.026 overall). That would need a more precise
+  arithmetic, not new angles.
