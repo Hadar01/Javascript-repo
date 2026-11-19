@@ -1,0 +1,6 @@
+{"salt": "Fsel-02", "batch": 145, "shot": 37353, "kind": "value", "A_fail_of_R": 64, "B_fail_of_R": 64, "B_value": 64, "B_phase": 0, "R": 64}
+{"salt": "Fsel-02", "batch": 225, "shot": 57791, "kind": "value", "A_fail_of_R": 64, "B_fail_of_R": 64, "B_value": 64, "B_phase": 0, "R": 64}
+{"salt": "Fsel-04", "batch": 236, "shot": 60536, "kind": "value", "A_fail_of_R": 64, "B_fail_of_R": 64, "B_value": 64, "B_phase": 0, "R": 64}
+{"salt": "Fsel-07", "batch": 188, "shot": 48302, "kind": "value", "A_fail_of_R": 64, "B_fail_of_R": 64, "B_value": 64, "B_phase": 0, "R": 64}
+{"salt": "nov19-a", "batch": 77, "shot": 19920, "kind": "value", "A_fail_of_R": 64, "B_fail_of_R": 64, "B_value": 64, "B_phase": 0, "R": 64}
+SUMMARY {"A": "dqi.kmb", "B": "dqi.kmb", "failing_inputs_of_A": 5, "also_fail_in_B_every_replica": 5, "fail_in_B_some_replica": 5}

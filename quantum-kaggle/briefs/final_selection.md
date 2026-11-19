@@ -131,6 +131,13 @@ DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of
 | 4471b493 | 4 / 1,024,000 | 365,871.96 | 70.790 | 28.23776 |
 | 5f901c55 (old slot 1, for comparison) | 1 / 1,024,000 | 367,110.1 | 70.552 | 28.20598 with the new invsqrt and chemistry |
 
+**Cross-replay** (`cross_replay_f56b04c7_to_4471b493.jsonl`, `cross_replay_4471b493_to_f56b04c7.jsonl`):
+- All 9 failing official inputs fail in the other file in 64 of 64 replicas (5 of 5, and 4 of 4; all value errors).
+- That establishes **shared, measurement-insensitive failures on those 9 inputs**. It does not establish identical
+  failure sets.
+- It is consistent with the two files differing only at 2 swap sites.
+- 4 versus 5 failures does not demonstrate a rate difference. Both scenarios are carried.
+
 **Model.**
 - Same specification as §3: Jeffreys prior, 20,000 draws, seed 11, K truncated at 39.
 - r_inv = 27.92798 and r_chem = 11.388728.
