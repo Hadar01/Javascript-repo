@@ -547,6 +547,15 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Submitted as mix11 (ref 58572455).
   - goodpjw2008 reports 6 failures / 1,638,400 shots for f56b04c7, same rate class as 5f901c55.
   - Kernel outputs (www.kaggleusercontent.com) are blocked by the proxy; get files from datasets instead.
+  - **mix11 scored 28.23837 public, exactly as predicted; rank 123 of 3,402** (106 above, 18 tied). Top 100 is at
+    28.23945.
+  - Official Fsel-00…09 sweeps:
+    - f56b04c7: 4 / 1,024,000, T 365,848.04;
+    - 4471b493: 4 / 1,024,000, T 365,871.96.
+  - Model (tools/dqi/finalsel/model_output_2026-11-19_frontier.txt):
+    - best pair f56b04c7 + 4471b493, E[max] 28.232;
+    - gain over the best single +0.009 to +0.012;
+    - it beats f56b04c7 + 5f901c55 (+0.005 to +0.007).
   - Levers to reach the top 100 (+0.00106 GM):
     - 1 invsqrt Toffoli per input ≈ +0.0056 GM;
     - 24 DQI Toffolis per shot ≈ +0.0006 GM.
