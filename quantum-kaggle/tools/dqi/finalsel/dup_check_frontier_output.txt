@@ -1,0 +1,3 @@
+dqi_4471/dqi.kmb Fsel-08: cumulative shots 2048000, distinct syndromes 2048000
+dqi_4471/dqi.kmb Fsel-09: cumulative shots 2150400, distinct syndromes 2150400
+TOTAL shots 2150400 distinct 2150400 syndromes seen more than once 0 extra copies 0

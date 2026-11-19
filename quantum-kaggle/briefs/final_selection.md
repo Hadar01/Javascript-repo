@@ -138,6 +138,12 @@ DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of
 - It is consistent with the two files differing only at 2 swap sites.
 - 4 versus 5 failures does not demonstrate a rate difference. Both scenarios are carried.
 
+**Duplicates** (`dup_check_frontier_output.txt`):
+> All 2,150,400 official inputs were distinct. We model the official draws as independent under the verifier's
+> pseudorandom sampling assumptions.
+
+Zero duplicates confirms no repeated inputs; it does not prove statistical independence.
+
 **Model.**
 - Same specification as §3: Jeffreys prior, 20,000 draws, seed 11, K truncated at 39.
 - r_inv = 27.92798 and r_chem = 11.388728.
