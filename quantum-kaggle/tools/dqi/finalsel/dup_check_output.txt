@@ -1,0 +1,6 @@
+ds_hayatohikawa_qcc-c8-milestone-portfolio/dqi.kmb Fsel-08: cumulative shots 2048000, distinct syndromes 2048000
+ds_hayatohikawa_qcc-c8-milestone-portfolio/dqi.kmb Fsel-09: cumulative shots 2150400, distinct syndromes 2150400
+ds_hayatohikawa_qcc-c8-milestone-portfolio/dqi.kmb team-f-a: cumulative shots 2252800, distinct syndromes 2252800
+TOTAL shots 2252800 distinct 2252800 syndromes seen more than once 0 extra copies 0
+
+[exited with code 0]

@@ -1,4 +1,4 @@
-# Final-selection analysis (2026-11-18): provisional, no pair locked
+# Final-selection analysis (2026-11-18, closed 2026-11-19): provisional selection, reopen only for a materially better candidate
 
 **Provisional slot 1:** DQI `5f901c55` (with invsqrt `864f81cd` and chemistry `4d63be3d`). **Slot 2 stays open.**
 DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of the two selected submissions.
@@ -26,10 +26,13 @@ DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of
 | Official verifier, one extra salt | 1 / 102,400 (team-w-a) | 0 / 102,400 (team-f-a) | official sampler |
 | Simulator census, seeds 2000–2015 | 0 / 262,144 | 0 / 262,144 | the SAME inputs for both files; own sampler reproducing the verifier's distribution, not the official code |
 
-- **Duplicates: none** (`tools/dqi/dup_check.py`).
-  - Every official shot of all 22 official runs (both files, 11 salts each) was regenerated with the verifier's own
-    seeds and sampler: **2,252,800 shots, 2,252,800 distinct syndromes, 0 duplicates.**
-  - The census inputs are shared by construction, so they count once in shared-rate pooling.
+- **Duplicates** (`tools/dqi/dup_check.py`; inputs regenerated with the verifier's own seeds and sampler for all 22
+  official runs):
+  > All 2,252,800 official inputs were distinct. We model the official draws as independent under the verifier's
+  > pseudorandom sampling assumptions.
+
+  Zero duplicates confirms no repeated inputs; it does not prove statistical independence. The census inputs are shared
+  by construction between the two files, so they count once in shared-rate pooling.
 - **Census caveat:** the census sampler is an independent reimplementation; it has matched official failure counts on
   exact replays. Scenarios with and without the census are both reported.
 
@@ -44,6 +47,25 @@ DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of
 - So both a shared-rate scenario and a separate-rate scenario are carried below.
 
 ## 3. Private-score model (overall geometric mean), `tools/dqi/final_pair_mc.py`
+
+**Evidence hierarchy.**
+- **Primary evidence:** the official-only scenarios (official verifier, official sampler).
+- **Sensitivity checks:** the census-inclusive scenarios (own sampler reimplementation, shared inputs).
+
+**Specification (for reproducibility).**
+- **Prior on each failure rate p:** Jeffreys, Beta(1/2, 1/2), so the posterior is Beta(k + 1/2, n − k + 1/2).
+- **Shared-rate scenario:** one p for both files. **Separate-rate scenario:** an independent p per file.
+- **Private draw:** K ~ Binomial(102,400, p), truncated at K = 39, which has negligible mass.
+  - K maps to the DQI ratio through the verifier's `clopper_pearson_upper_bound` and `repetition_overhead`.
+  - Two different files' K are modelled as independent given p.
+- **Monte Carlo:** 20,000 posterior draws of p (numpy default_rng, seed 11). E[score | p] and the pair's E[max | p] are
+  computed exactly over K for each draw. Future-draw quantiles use one K sample per p draw.
+- **MC standard errors of the posterior means** (`model_output_2026-11-19.txt`):
+  - ≤ 6e-5 for each single-file E[score];
+  - ≤ 1e-5 for every pair gain, against gains of 0.0013–0.0027.
+- **Inputs:** `tools/dqi/finalsel/config_2026-11-18.json`.
+- **Diagnostics pinned in `tools/dqi/finalsel/`:** official sweeps, cross-replays, census and chemistry salt check,
+  duplicate check, model output, artifact hashes.
 
 - **Score:** (r_inv × r_dqi(K) × r_chem)^(1/3), with r_inv = 27.87955 and r_chem = 11.38873 fixed, and r_dqi(K) from the
   verifier's own repetition overhead.
@@ -64,7 +86,7 @@ DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of
 | separate, + census | 5f901c55 (2 / 1.39M) | 1.6e-6 [0.4, 4.0] | 0.85 [0.66, 0.96] | 28.1818 [28.1725, 28.1878] | 28.1466 / 28.1897 / 28.1897 |
 | | 4b350932 (5 / 1.39M) | 3.7e-6 [1.6, 7.1] | 0.68 [0.48, 0.85] | 28.1362 [28.1234, 28.1458] | 28.0736 / 28.1530 / 28.1530 |
 
-**Best-of-two pair 5f901c55 + 4b350932, gain in expected overall score over 5f901c55 alone:**
+**Best-of-two pair 5f901c55 + 4b350932, gain in expected overall score over 5f901c55 alone** (rows 1 and 3 are the primary evidence):
 
 | Scenario | Mean gain | 90% CrI |
 |---|---|---|
@@ -78,8 +100,10 @@ DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of
   its 1,437.7 fewer mean Toffolis; the failure-rate difference is not demonstrated.
 - The P(K=0) intervals are wide (roughly 0.4–0.96 across scenarios), so a clean public draw is one observation, not
   evidence of reliability.
-- A second slot holding 4b350932 adds a small, positive expected gain in all scenarios. It is worth taking at
-  selection time if no stronger eligible candidate exists, but it does not justify more research now.
+- A second slot holding 4b350932 adds a small, positive expected gain in all scenarios: +0.0013 to +0.0027 overall,
+  with MC s.e. ≤ 1e-5.
+- **Decision (2026-11-19, supervisor):** keep 5f901c55 as provisional slot 1 and 4b350932 as the slot-2 fallback. No
+  further analysis cycle for these two files. Reopen only when a materially better candidate appears.
 
 ## 4. Process for any new candidate before the deadline
 1. Run the unchanged official verifier on fresh salts at an equal budget against slot 1.

@@ -61,9 +61,12 @@ for sc in cfg['scenarios']:
         M = np.maximum(Sa[:, None], Sb[None, :])                                # (KMAX, KMAX)
         e_pair = np.einsum('ni,nj,ij->n', pmf[a], pmf[b], M)
         e_best_single = np.maximum((pmf[a] * Sa).sum(1), (pmf[b] * Sb).sum(1))
+        gain = e_pair - e_best_single
         Ka = np.minimum(rng.binomial(N, P[a]), KMAX - 1); Kb = np.minimum(rng.binomial(N, P[b]), KMAX - 1)
         pred = np.maximum(Sa[Ka], Sb[Kb])
-        gain = e_pair - e_best_single
+        se = lambda x: x.std(ddof=1) / np.sqrt(len(x))   # Monte Carlo s.e. of a posterior mean over P_SIMS draws
+        print(f"   MC s.e. (P_SIMS={P_SIMS}, seed 11): E[score] {a} {se((pmf[a]*Sa).sum(1)/pmf[a].sum(1)):.1e}, "
+              f"{b} {se((pmf[b]*Sb).sum(1)/pmf[b].sum(1)):.1e}; pair gain {se(gain):.1e}")
         print(f"pair {a}+{b}: E[max|p] mean {e_pair.mean():.5f} 90%CrI [{np.percentile(e_pair,5):.5f}, "
               f"{np.percentile(e_pair,95):.5f}] | gain over best single: mean {gain.mean():+.5f} 90%CrI "
               f"[{np.percentile(gain,5):+.5f}, {np.percentile(gain,95):+.5f}] | future-draw 5/50/95% {q(pred)}")

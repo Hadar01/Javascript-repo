@@ -1,0 +1,24 @@
+
+=== scenario: shared rate, official verifier shots only (7 / 2,252,800)
+5f901c55  score@K=0 28.18966 | p median 3.17e-06 90%CrI [1.60e-06, 5.51e-06] | P(K=0|p) median 0.723 90%CrI [0.569, 0.849] | E[score|p] mean 28.17546 90%CrI [28.16637, 28.18271] | future-draw 5/50/95% 28.14664 / 28.18966 / 28.18966
+4b350932  score@K=0 28.15296 | p median 3.17e-06 90%CrI [1.60e-06, 5.51e-06] | P(K=0|p) median 0.723 90%CrI [0.569, 0.849] | E[score|p] mean 28.13877 90%CrI [28.12970, 28.14602] | future-draw 5/50/95% 28.10999 / 28.15296 / 28.15296
+   MC s.e. (P_SIMS=20000, seed 11): E[score] 5f901c55 3.6e-05, 4b350932 3.6e-05; pair gain 7.2e-06
+pair 5f901c55+4b350932: E[max|p] mean 28.17811 90%CrI [28.17086, 28.18391] | gain over best single: mean +0.00266 90%CrI [+0.00120, +0.00449] | future-draw 5/50/95% 28.14664 / 28.18966 / 28.18966
+
+=== scenario: shared rate, official + census (census inputs counted once) (7 / 2,514,944)
+5f901c55  score@K=0 28.18966 | p median 2.84e-06 90%CrI [1.44e-06, 4.96e-06] | P(K=0|p) median 0.748 90%CrI [0.602, 0.863] | E[score|p] mean 28.17690 90%CrI [28.16861, 28.18338] | future-draw 5/50/95% 28.14664 / 28.18966 / 28.18966
+4b350932  score@K=0 28.15296 | p median 2.84e-06 90%CrI [1.44e-06, 4.96e-06] | P(K=0|p) median 0.748 90%CrI [0.602, 0.863] | E[score|p] mean 28.14022 90%CrI [28.13194, 28.14669] | future-draw 5/50/95% 28.10999 / 28.15296 / 28.15296
+   MC s.e. (P_SIMS=20000, seed 11): E[score] 5f901c55 3.2e-05, 4b350932 3.2e-05; pair gain 6.5e-06
+pair 5f901c55+4b350932: E[max|p] mean 28.17927 90%CrI [28.17266, 28.18446] | gain over best single: mean +0.00237 90%CrI [+0.00107, +0.00405] | future-draw 5/50/95% 28.14664 / 28.18966 / 28.18966
+
+=== scenario: separate rates, official only (2 / 1,126,400 vs 5 / 1,126,400)
+5f901c55  score@K=0 28.18966 | p median 1.96e-06 90%CrI [5.17e-07, 4.95e-06] | P(K=0|p) median 0.818 90%CrI [0.603, 0.948] | E[score|p] mean 28.18000 90%CrI [28.16866, 28.18739] | future-draw 5/50/95% 28.14664 / 28.18966 / 28.18966
+4b350932  score@K=0 28.15296 | p median 4.61e-06 90%CrI [2.02e-06, 8.64e-06] | P(K=0|p) median 0.624 90%CrI [0.413, 0.813] | E[score|p] mean 28.13236 90%CrI [28.11724, 28.14422] | future-draw 5/50/95% 28.07363 / 28.15296 / 28.15296
+   MC s.e. (P_SIMS=20000, seed 11): E[score] 5f901c55 4.2e-05, 4b350932 5.9e-05; pair gain 9.9e-06
+pair 5f901c55+4b350932: E[max|p] mean 28.18153 90%CrI [28.17278, 28.18763] | gain over best single: mean +0.00153 90%CrI [+0.00022, +0.00422] | future-draw 5/50/95% 28.14664 / 28.18966 / 28.18966
+
+=== scenario: separate rates, official + census (2 / 1,388,544 vs 5 / 1,388,544)
+5f901c55  score@K=0 28.18966 | p median 1.58e-06 90%CrI [4.21e-07, 4.01e-06] | P(K=0|p) median 0.851 90%CrI [0.663, 0.958] | E[score|p] mean 28.18183 90%CrI [28.17254, 28.18781] | future-draw 5/50/95% 28.14664 / 28.18966 / 28.18966
+4b350932  score@K=0 28.15296 | p median 3.72e-06 90%CrI [1.64e-06, 7.08e-06] | P(K=0|p) median 0.683 90%CrI [0.484, 0.845] | E[score|p] mean 28.13615 90%CrI [28.12339, 28.14583] | future-draw 5/50/95% 28.07363 / 28.15296 / 28.15296
+   MC s.e. (P_SIMS=20000, seed 11): E[score] 5f901c55 3.5e-05, 4b350932 4.9e-05; pair gain 7.9e-06
+pair 5f901c55+4b350932: E[max|p] mean 28.18308 90%CrI [28.17584, 28.18802] | gain over best single: mean +0.00125 90%CrI [+0.00019, +0.00338] | future-draw 5/50/95% 28.14664 / 28.18966 / 28.18966

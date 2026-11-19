@@ -523,9 +523,23 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - Fisher p = 0.45 means not demonstrated, NOT proven noise;
     - independence of different-hash draws is a modelling assumption.
 
+- 2026-11-19 **Selection CLOSED for these two candidates** (supervisor):
+  - Slot 1 (provisional): DQI 5f901c55 + invsqrt 864f81cd + chem 4d63be3d.
+  - Slot-2 fallback: DQI 4b350932.
+  - No further analysis cycle for these files. Reopen only for a materially better candidate.
+  - Evidence rules:
+    - official-only scenarios are the PRIMARY evidence; census-inclusive runs are sensitivity checks;
+    - prior Jeffreys Beta(1/2, 1/2);
+    - MC with 20,000 posterior draws, seed 11; MC s.e. of the pair gain ≤ 1e-5;
+    - wording: "All 2,252,800 official inputs were distinct. We model the official draws as independent under the
+      verifier's pseudorandom sampling assumptions."
+  - Artifacts and diagnostics are pinned in quantum-kaggle/PINS.md and tools/dqi/finalsel/.
+  - Mode: LIGHT MAINTENANCE.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
+- PINS.md: sha256 pins of the current submission's files and the selection candidates
 - PLAN.md: reading guide and phased plan
 - briefs/: three expert briefs plus three debate rebuttals
 - tools/chem_cost_model/: Agent C's numpy reimplementation of the chemistry metric and costs (stress.py reproduces the public 11.199×). It was written against scratchpad paths; set the data paths before use.

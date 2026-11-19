@@ -1,0 +1,12 @@
+| Artifact | sha256 | Source |
+|---|---|---|
+| `ds_jmt_w/invsqrt.kmb` | `864f81cd20489d80e302f48014fcedec3b3fb703122fbcbac41b0bb2a395a859` | |
+| `ds_jmt_w/dqi.kmb` | `5f901c556cafd02dc11641eee7766171a454e3a0b6687d890ff9f99944e1934c` | |
+| `ds_jmt_w/dqi_5f901c55.kmb.xz` | `25b4d0342f52ff8fc5e38a9c9b9dffaea35dba7d353a16fe948233fd1b66ddae` | |
+| `ds_jmt_w/dfthcsos/submission.npz` | `4d63be3d5c26cfa447a3464eeaf515a652814a1dd4c78f1f1af2f5b7d9e9b8b3` | |
+| `ds_hayatohikawa_qcc-c8-milestone-portfolio/dqi.kmb` | `4b350932b03931af6040c871209da62aa0ebc74cfac3e77efcb6384e027285cc` | |
+| `ds_hayatohikawa_qcc-c8-milestone-portfolio/invsqrt.kmb` | `090009609ee68ca309b28950c06adb7c0640ed784f8dfbc78f1319088e8322bf` | |
+| `ds_hayatohikawa_qcc-c8-milestone-portfolio/dfthcsos/submission.npz` | `7e6e65d79f3528d7ec64bb22e5498edac4979dd0164b3a3cb4c67f05035133a1` | |
+| `jeff/invsqrt.kmb` | `9339eeccc3b2d01289c8c51687bda31a70b0260e22bed07c516edb6134705641` | |
+| `mx10/submission.zip` | `4862c0d995b60d0faee8a2d411bba7c5efbe2b85c3f347eaab4a058b4579f9b4` | |
+| `kg/data/kickmix/kickmix.so` | `c66b3216c4029e0cdfd09054306aa0feadf53ab2f50c1164e37f752874e5005e` | |
