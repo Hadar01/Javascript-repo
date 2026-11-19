@@ -20,4 +20,6 @@ them against these hashes. The 15 slot-1 angle loaders are listed in `tools/dqi/
 | `nov19/ds_ozertuu/dfthcsos/submission.npz` | `6ef06081cb9c5752ee7235c86d480ddfc5db027f01e5d5d66a544dbda85d1958` | 2026-11-19 chemistry weights: Manvender Singh refit of 4d63be3d; loaders identical to slot 1 |
 | `nov19/f23498/invsqrt.kmb` | `ecf908fe…` | same invsqrt as acc7b9c8 with lower-precision angle literals (cost 74,383.70) |
 | `mx11/submission.zip` | `5cdb7e4acbe8c082…` | submission ref 58572455 (acc7b9c8 + f56b04c7 + 6ef06081 + slot-1 loaders), local 28.2384 at K=0 |
+| `nov19/dqi_4471/dqi.kmb` | `4471b4933c18fd654a3ab7cf15cb01958b98ccbd9…` | DQI slot-2 candidate: Koushik Rudra v60 frontier (asteriospanoras/qcc-circuit-atlas frontier/) |
+| `mx12/submission.zip` | `82f3871f2a9a8b1a…` | submission ref 58573441 (mix11 with DQI 4471b493), the slot-2 hedge |
 | `kg/data/kickmix/kickmix.so` | `c66b3216c4029e0cdfd09054306aa0feadf53ab2f50c1164e37f752874e5005e` | competition-bundled simulator (results identical to PyPI kickmix 1.0.0) |

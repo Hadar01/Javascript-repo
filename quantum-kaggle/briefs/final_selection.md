@@ -1,4 +1,4 @@
-# Final-selection analysis (2026-11-18, closed 2026-11-19): provisional selection, reopen only for a materially better candidate
+# Final-selection analysis (2026-11-18; closed 2026-11-19; REOPENED 2026-11-19 evening, see §5)
 
 **Provisional slot 1:** DQI `5f901c55` (with invsqrt `864f81cd` and chemistry `4d63be3d`). **Slot 2 stays open.**
 DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of the two selected submissions.
@@ -111,3 +111,49 @@ DQI `4b350932` is the backup candidate. Kaggle keeps the better private score of
 3. Check for duplicates.
 4. Add it to the config and rerun the model in both scenarios.
 5. Choose slot 2 by the expected overall score of the pair, with its credible interval.
+
+## 5. Reopened 2026-11-19 (evening): a materially better public file set
+
+**Trigger.**
+- A public set reached 28.2384, about +0.17% overall over slot 1's 28.18965; our public rank had fallen to 705.
+- The set (goodpjw2008 / ozertuu notebooks):
+  - invsqrt `acc7b9c8`, maoxin123, 44 qubits;
+  - DQI `f56b04c7`, which is Koushik Rudra's `4471b493` with 2 swap-collapse sites, −24 Toffolis per shot;
+  - chemistry npz `6ef06081` with the same 15 loaders.
+- Local unmodified verifiers (salt nov19-a): all PASS.
+- Submitted as mix11: **public 28.23837**, exactly as predicted; rank 123.
+
+**Steps 1–3 of §4 (equal budget, official verifier, salts Fsel-00…09):**
+
+| File | Failures / shots | Mean T | DQI ratio at K=0 | Overall at K=0 |
+|---|---|---|---|---|
+| f56b04c7 | 4 / 1,024,000 (+1 / 102,400 on nov19-a) | 365,848.04 | 70.795 | 28.23837 |
+| 4471b493 | 4 / 1,024,000 | 365,871.96 | 70.790 | 28.23776 |
+| 5f901c55 (old slot 1, for comparison) | 1 / 1,024,000 | 367,110.1 | 70.552 | 28.20598 with the new invsqrt and chemistry |
+
+**Model.**
+- Same specification as §3: Jeffreys prior, 20,000 draws, seed 11, K truncated at 39.
+- r_inv = 27.92798 and r_chem = 11.388728.
+- Config: `tools/dqi/finalsel/config_2026-11-19_frontier.json`. Output: `model_output_2026-11-19_frontier.txt`.
+
+| Scenario | E[score] f56b04c7 | E[score] 4471b493 | Pair f56b04c7 + 4471b493: E[max], gain [90% CrI] | Pair f56b04c7 + 5f901c55: gain |
+|---|---|---|---|---|
+| shared, official only (9 / 2,150,400) | 28.2197 | 28.2190 | 28.2321, +0.0125 [+0.0080, +0.0169] | +0.0046 |
+| separate, official only | 28.2178 | 28.2190 | 28.2322, +0.0091 [+0.0040, +0.0144] | +0.0067 |
+| sensitivity: f56b04c7 adds goodpjw2008's reported 6 / 1,638,400 | 28.2206 | 28.2190 | 28.2329, +0.0091 | +0.0055 |
+
+- MC s.e.: ≤ 6e-5 for each single-file E[score]; ≤ 2.5e-5 for each pair gain.
+- **Reading.**
+  - In the separate scenario 4471b493's E[score] is 0.0013 higher. This is driven by 4 versus 5 observed failures.
+    The sample **does not demonstrate a rate difference** (90% CrIs overlap almost entirely).
+  - Under a shared rate, f56b04c7 is higher by its 24 fewer Toffolis per shot.
+  - Either way the two files are within noise of each other as single choices.
+- **The pair f56b04c7 + 4471b493 has the highest expected overall score in every scenario.** The two files have
+  different hashes, so we model their private draws as independent. Each one's zero-failure score is above the other's
+  one-failure score, so the second slot is a real hedge.
+- It beats the old provisional pair (5f901c55 + 4b350932, E ≈ 28.18) by about 0.05.
+
+**Provisional (pending supervisor review):**
+- slot 1 = mix11 (acc7b9c8 + f56b04c7 + 6ef06081 + loaders);
+- slot 2 = the same with DQI 4471b493.
+- The slot-2 file is submitted as mix12 (ref 58573441), so it is selectable at the deadline. Nothing is locked.
