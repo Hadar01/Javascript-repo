@@ -1,0 +1,27 @@
+
+=== scenario: shared rate (f56b04c7 + 4471b493 pooled; 5f901c55 assumed same), official only (9 / 2,150,400)
+f56b04c7  score@K=0 28.23837 | p median 4.24e-06 90%CrI [2.33e-06, 6.99e-06] | P(K=0|p) median 0.648 90%CrI [0.489, 0.787] | E[score|p] mean 28.21965 90%CrI [28.20907, 28.22825] | future-draw 5/50/95% 28.15880 / 28.23837 / 28.23837
+4471b493  score@K=0 28.23776 | p median 4.24e-06 90%CrI [2.33e-06, 6.99e-06] | P(K=0|p) median 0.648 90%CrI [0.489, 0.787] | E[score|p] mean 28.21903 90%CrI [28.20846, 28.22763] | future-draw 5/50/95% 28.15819 / 28.23776 / 28.23776
+5f901c55  score@K=0 28.20598 | p median 4.24e-06 90%CrI [2.33e-06, 6.99e-06] | P(K=0|p) median 0.648 90%CrI [0.489, 0.787] | E[score|p] mean 28.18727 90%CrI [28.17671, 28.19587] | future-draw 5/50/95% 28.12649 / 28.20598 / 28.20598
+   MC s.e. (P_SIMS=20000, seed 11): E[score] f56b04c7 4.2e-05, 4471b493 4.2e-05; pair gain 1.9e-05
+pair f56b04c7+4471b493: E[max|p] mean 28.23210 90%CrI [28.22593, 28.23629] | gain over best single: mean +0.01245 90%CrI [+0.00804, +0.01686] | future-draw 5/50/95% 28.19527 / 28.23837 / 28.23837
+   MC s.e. (P_SIMS=20000, seed 11): E[score] f56b04c7 4.2e-05, 5f901c55 4.2e-05; pair gain 9.5e-06
+pair f56b04c7+5f901c55: E[max|p] mean 28.22427 90%CrI [28.21605, 28.23083] | gain over best single: mean +0.00463 90%CrI [+0.00258, +0.00698] | future-draw 5/50/95% 28.19527 / 28.23837 / 28.23837
+
+=== scenario: separate rates, official only (f56b04c7 5/1,126,400; 4471b493 4/1,024,000; 5f901c55 2/1,126,400)
+f56b04c7  score@K=0 28.23837 | p median 4.59e-06 90%CrI [1.99e-06, 8.70e-06] | P(K=0|p) median 0.625 90%CrI [0.410, 0.816] | E[score|p] mean 28.21776 90%CrI [28.20231, 28.22972] | future-draw 5/50/95% 28.15880 / 28.23837 / 28.23837
+4471b493  score@K=0 28.23776 | p median 4.09e-06 90%CrI [1.62e-06, 8.33e-06] | P(K=0|p) median 0.658 90%CrI [0.426, 0.847] | E[score|p] mean 28.21902 90%CrI [28.20313, 28.23068] | future-draw 5/50/95% 28.15819 / 28.23776 / 28.23776
+5f901c55  score@K=0 28.20598 | p median 1.96e-06 90%CrI [5.09e-07, 4.88e-06] | P(K=0|p) median 0.818 90%CrI [0.606, 0.949] | E[score|p] mean 28.19637 90%CrI [28.18521, 28.20374] | future-draw 5/50/95% 28.16293 / 28.20598 / 28.20598
+   MC s.e. (P_SIMS=20000, seed 11): E[score] f56b04c7 6.0e-05, 4471b493 6.0e-05; pair gain 2.2e-05
+pair f56b04c7+4471b493: E[max|p] mean 28.23218 90%CrI [28.22620, 28.23631] | gain over best single: mean +0.00906 90%CrI [+0.00400, +0.01442] | future-draw 5/50/95% 28.19527 / 28.23837 / 28.23837
+   MC s.e. (P_SIMS=20000, seed 11): E[score] f56b04c7 6.0e-05, 5f901c55 4.2e-05; pair gain 2.5e-05
+pair f56b04c7+5f901c55: E[max|p] mean 28.22464 90%CrI [28.21636, 28.23191] | gain over best single: mean +0.00673 90%CrI [+0.00212, +0.01387] | future-draw 5/50/95% 28.19527 / 28.23837 / 28.23837
+
+=== scenario: sensitivity: separate, f56b04c7 adds goodpjw2008's reported 6/1,638,400 (external, not our run)
+f56b04c7  score@K=0 28.23837 | p median 4.04e-06 90%CrI [2.36e-06, 6.34e-06] | P(K=0|p) median 0.661 90%CrI [0.522, 0.785] | E[score|p] mean 28.22064 90%CrI [28.21166, 28.22815] | future-draw 5/50/95% 28.15880 / 28.23837 / 28.23837
+4471b493  score@K=0 28.23776 | p median 4.10e-06 90%CrI [1.65e-06, 8.31e-06] | P(K=0|p) median 0.657 90%CrI [0.427, 0.845] | E[score|p] mean 28.21902 90%CrI [28.20323, 28.23059] | future-draw 5/50/95% 28.15819 / 28.23776 / 28.23776
+5f901c55  score@K=0 28.20598 | p median 1.93e-06 90%CrI [4.99e-07, 4.95e-06] | P(K=0|p) median 0.821 90%CrI [0.602, 0.950] | E[score|p] mean 28.19638 90%CrI [28.18493, 28.20378] | future-draw 5/50/95% 28.16293 / 28.20598 / 28.20598
+   MC s.e. (P_SIMS=20000, seed 11): E[score] f56b04c7 3.6e-05, 4471b493 6.0e-05; pair gain 1.9e-05
+pair f56b04c7+4471b493: E[max|p] mean 28.23285 90%CrI [28.22831, 28.23619] | gain over best single: mean +0.00913 90%CrI [+0.00470, +0.01354] | future-draw 5/50/95% 28.19527 / 28.23837 / 28.23837
+   MC s.e. (P_SIMS=20000, seed 11): E[score] f56b04c7 3.6e-05, 5f901c55 4.2e-05; pair gain 1.5e-05
+pair f56b04c7+5f901c55: E[max|p] mean 28.22612 90%CrI [28.22080, 28.23083] | gain over best single: mean +0.00548 90%CrI [+0.00254, +0.00949] | future-draw 5/50/95% 28.19527 / 28.23837 / 28.23837
