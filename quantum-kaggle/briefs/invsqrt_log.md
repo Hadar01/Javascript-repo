@@ -36,10 +36,12 @@ Baseline: public v95 `$S/cand/pub/invsqrt.kmb`. File sha 1c5b1ee2…. Ratio 21.7
    | 50k–53.8k | un-normalisation | ≈57 + conditional | — |
 
    **All 41 rotations act on the single wire q28.**
-2. **The rotation angles are at the LP optimum.**
+2. **The tested angle refit found no improvement.**
    - The minimum absolute margin is 3.1766e-12 turns.
-   - It is equal, to about 1e-19, at 15 or more different x spread over the whole range (equioscillation).
-   - So re-fitting the angles alone gains nothing.
+   - It is equal, to about 1e-19, at 15 or more different x spread over the whole range.
+   - These are active constraints; that is evidence, not an optimality certificate (no dual solution was computed).
+   - The refit we tried did not raise the margin.
+   - Wording corrected 2026-11-22; the original said "at the LP optimum".
    - Even a 10× margin increase would be worth only about 19 Toffoli-equivalents (1.2%).
 3. **Domain-aware scan of unconditional gates:** across all 1,409 Toffoli-like gates, 0 are deletable or downgradable under the four simple patterns (never fires, product equals one control, CCZ reducible to CZ, CSWAP is really a SWAP). The public authors have already harvested these.
    - The only "candidates" were conditioned fix-up CCZs inside deeply nested condition stacks.
@@ -803,9 +805,11 @@ Reference points:
   - worst error 0.99946 of tolerance.
 - It beats our previous `864f81cd` (74,491) by 0.17%.
 - `ecf908fe` is the same circuit with shorter angle literals; it costs 74,383.70.
-- **Its angles are at the LP optimum:**
+- **The tested refit found no improvement:**
   - the minimum absolute margin is 2.1065e-12 turns;
   - it is reached by 31 inputs (within 1e-6 relative), with mixed error signs;
-  - so an angle refit gains nothing, the same as for the v14 line.
+  - so many constraints are active. That is evidence, not an optimality certificate, and no LP dual was computed;
+  - an angle refit is unlikely to gain much, but optimality is not proven;
+  - wording corrected 2026-11-22.
 - Doubling the margin would be worth about 4.6 Toffoli-equivalents (+0.026 overall). That would need a more precise
   arithmetic, not new angles.
