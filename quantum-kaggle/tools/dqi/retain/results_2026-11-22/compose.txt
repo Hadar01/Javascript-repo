@@ -1,0 +1,4 @@
+profile fc extra 0: edges considered 131411  extra wires 0  jointly compatible (greedy) 11  distance median 173  max 173
+profile fs extra 0: edges considered 131411  extra wires 0  jointly compatible (greedy) 15  distance median 173  max 146923
+profile fc extra 1: edges considered 131411  extra wires 1  jointly compatible (greedy) 116  distance median 1661  max 148661
+profile fc extra 2: edges considered 131411  extra wires 2  jointly compatible (greedy) 221  distance median 19108  max 148661

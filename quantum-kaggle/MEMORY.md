@@ -564,6 +564,23 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
     - 1 invsqrt Toffoli per input ≈ +0.0056 GM;
     - 24 DQI Toffolis per shot ≈ +0.0006 GM.
 
+- 2026-11-22 **DQI product-retention scan (funded for one day): STOPPED at checkpoint 1, net saving 0.**
+  - Brief: briefs/dqi_retention_scan.md. Tool: tools/dqi/retain_scan.cc.
+  - Funnel:
+    - 164,185 identical-product pairs (131,933 consecutive);
+    - 131,411 with the same factors;
+    - width-feasible at Q=890: 11 with certain-zero wires, 121 with sample-zero wires;
+    - after the 17-set stress validation (278,528 shots, including weights 32–35): 110;
+    - jointly ≤ 4, because of capacity-1 bottlenecks;
+    - the bottleneck wire q889 holds a rare AND flag → 0.
+  - Extra width does not pay: Q=891 gives ≤ 116 Toffolis/shot against ≈ 823 cost.
+  - Side classes excluded:
+    - "product equals one factor" downgrades are zero-test chain tails;
+    - never-firing gates.
+    - For both, the break-even needs q < 6e-9 per shot; only a proof could show that, and sampling cannot.
+  - Invsqrt angle wording corrected to "tested refit found no improvement" (supervisor, 2026-11-22).
+  - Provisional pair still mix11 + mix12. Back to light maintenance.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)

@@ -1,0 +1,5 @@
+17 sample sets
+  F popP<100     candidates  1546  never violated    53  weight of survivors    48.00
+  F popP>=100    candidates   218  never violated   103  weight of survivors    95.00
+  PP group1      candidates    11  never violated     0  weight of survivors     0.00
+  PP groups2-5   candidates   110  never violated   110  weight of survivors   110.00
