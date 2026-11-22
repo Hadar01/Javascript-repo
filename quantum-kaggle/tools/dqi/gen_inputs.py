@@ -9,8 +9,11 @@ from dqi import verify_submission_dqi as v
 spec = v.ProblemSpecDQI.benchmark_instance(num_shots=N)
 tables = v.FieldTables(km.GF2Field(spec.degree))
 wp = v.optimal_dqi_weights(spec.m, spec.max_errors, spec.degree, spec.r) ** 2
-if len(sys.argv) > 5:   # optional: force a fixed weight (stress tests); NOT the official distribution
-    w = int(sys.argv[5]); wp = np.zeros_like(wp); wp[w] = 1.0
+if len(sys.argv) > 5:   # optional stress distributions; NOT the official distribution
+    if sys.argv[5] == 'uniform':   # uniform over the weights the official distribution can produce
+        wp = (wp > 0).astype(float); wp /= wp.sum()
+    else:                          # a fixed weight
+        w = int(sys.argv[5]); wp = np.zeros_like(wp); wp[w] = 1.0
 rng = np.random.default_rng(seed)
 syn, mbuc, ph = v.sample_shots(spec, tables, rng, N, wp)
 # recompute weights: number of nonzero error symbols isn't returned; re-derive from rng is not possible, so store via syndrome trick
