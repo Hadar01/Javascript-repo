@@ -58,6 +58,11 @@ All three tasks PASS under our unmodified verifiers. Local GM on salt nov24-a is
   public draw of `a931fcfe` is known to be K=0.
 - **mix19** (ref 58818871): `bb676b95` + `dbb2ada3` + chemistry `17a76582`. Its public draw is unknown.
 
+**Public scores (2026-11-24):**
+- **mix18 33.17040**, as predicted (K=0 draw). That is **rank 425 of 3,657**, up from 1,221. Top 100 is at 33.17069.
+- **mix19 33.07723**, meaning `dbb2ada3`'s public draw had failures. Equal-budget sweeps are still needed before
+  using it in a final pair.
+
 ## Where the remaining 2.96% to #1 has to come from
 - #1 is at 34.15280, which is +2.96% GM over 33.17. That requires one of:
   - one task 8.4% cheaper with the other two fixed;

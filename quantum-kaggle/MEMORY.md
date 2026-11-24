@@ -594,6 +594,7 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Folded-residual invsqrt idea priced (briefs/fusion_folded_pricing.md): it LOSES even at the most generous lower
     bound (Q=51, lookup + rotations only: +5.6%). The 1,024-row lookup consumed the advantage through width (≥ 29-bit
     word) plus about 1,023 Toffolis at narrow width. Closed.
+  - Public: **mix18 33.17040 (rank 425/3,657)**; mix19 33.07723 (dbb2ada3 drew failures).
   - New standing rule (supervisor): a negative result closes that experiment only. Keep the public submission
     competitive and keep one structural idea under active investigation.
 
