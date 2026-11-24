@@ -69,3 +69,12 @@ All three tasks PASS under our unmodified verifiers. Local GM on salt nov24-a is
 - Micro-edits are worth about 1e-5 each.
 - The folded-residual invsqrt idea is priced in `fusion_folded_pricing.md`. As a table design it loses to this
   baseline at every width.
+
+## Next-stage screen: invsqrt width (2026-11-24)
+- One qubit off `bb676b95` would be worth +2.8% on invsqrt, about +0.30 GM on its own. That is the largest per-unit
+  lever in the portfolio.
+- Exact width profile over all x (`tools/invsqrt/width_profile.py`, 2 coin seeds):
+  - 10,645 of 60,766 ops need all 37 qubits;
+  - they fall in **351 separate peak episodes**.
+- A 1-qubit cut must relieve every episode, so the width is saturated in the same way as the DQI's 890th wire.
+- Not a cheap next bet. Needs a structural redesign of the arithmetic, not a local edit.
