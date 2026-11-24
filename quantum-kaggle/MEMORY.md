@@ -581,6 +581,22 @@ Reach the top 100, then the top 1% (about rank 26), then **win**. Keep iterating
   - Invsqrt angle wording corrected to "tested refit found no improvement" (supervisor, 2026-11-22).
   - Provisional pair still mix11 + mix12. Back to light maintenance.
 
+- 2026-11-24 **Frontier jumped to 33.17; we were rank 1,221.** Reproduced the public 33.17 portfolio with the
+  unmodified verifiers (brief: briefs/frontier_33_17.md):
+  - invsqrt bb676b95: 37 qubits, 60,927.6, ratio 34.086; +22.1% vs mix11.
+  - DQI a931fcfe / dbb2ada3: 900 qubits, about 316,130 T, ratio about 80.12 at K=0; +13.2%.
+  - chemistry: 405 qubits, T 13,214, ratio 13.364; +17.3%.
+  - GM at K=0: 33.170.
+  - Submitted mix18 (ref 58818853: bb676b95 + a931fcfe + chemistry 17a76582) and mix19 (ref 58818871: with DQI
+    dbb2ada3).
+  - The 900-qubit DQI line fails about once per run, and carries approximate expected-value rewrites (goodpjw2008,
+    Atakan). Allowing that class is a policy question for the supervisor.
+  - Folded-residual invsqrt idea priced (briefs/fusion_folded_pricing.md): it LOSES even at the most generous lower
+    bound (Q=51, lookup + rotations only: +5.6%). The 1,024-row lookup consumed the advantage through width (≥ 29-bit
+    word) plus about 1,023 Toffolis at narrow width. Closed.
+  - New standing rule (supervisor): a negative result closes that experiment only. Keep the public submission
+    competitive and keep one structural idea under active investigation.
+
 ## Repo layout
 - explainer/: the HTML explainer page, published as an artifact
 - notebooks/: Kaggle notebooks we push (private by default)
