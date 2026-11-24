@@ -78,3 +78,12 @@ All three tasks PASS under our unmodified verifiers. Local GM on salt nov24-a is
   - they fall in **351 separate peak episodes**.
 - A 1-qubit cut must relieve every episode, so the width is saturated in the same way as the DQI's 890th wire.
 - Not a cheap next bet. Needs a structural redesign of the arithmetic, not a local edit.
+
+## Next-stage screen: DQI a931fcfe profile (2026-11-24)
+- Own simulator (`prof`), 4,096 official shots: mean 316,140.7 Toffolis, 0 value/phase errors, peak 900 qubits.
+- Per-1M-op windows (`tools/dqi/finalsel/a931fcfe_timeline_1M.tsv`):
+  - the Toffolis are spread over about 49 windows, the largest holding about 7% (op 31M, 22,954);
+  - the width is at 900 in almost every window from op 21M on.
+- No single dominant stage.
+- A DQI saving at the size #1 needs (about 8% of DQI cost) requires a stage-level algorithmic redesign, not local
+  edits. Mapping windows to decoder stages is the next step if this task is chosen.
